@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    
+    
+    <string-array
+        name="audio_stream_type_array"
+        >
+         
+         <item>@string/audio_stream_alarm</item>
+         <item>@string/audio_stream_music</item>
+         <item>@string/audio_stream_notification</item>
+         <item>@string/audio_stream_dtmf</item>
+         <item>@string/audio_stream_ring</item>
+         <item>@string/audio_stream_system</item>
+         <item>@string/audio_stream_voice_call</item>
+
+         <item>@string/audio_stream_default</item>
+         
+    </string-array>
+    <string-array
+        name="audio_focus_type_array"
+        >
+         
+         <item>@string/audio_focus_gain</item>
+         <item>@string/audio_focus_gain_transient</item>
+         <item>@string/audio_focus_gain_transient_may_duck</item>
+         <item>@string/audio_focus_loss</item>
+         <item>@string/audio_focus_loss_transient</item>
+         <item>@string/audio_focus_loss_transient_can_duck</item>
+         
+    </string-array>
+    
+</resources>
