@@ -10,5 +10,10 @@
   
         app:showAsAction="never"
         android:title="Hog, begone"/>
+    <item
+        android:id="@+id/action_exit_service"
+
+        app:showAsAction="never"
+        android:title="Hog service, begone"/>
 
 </menu>

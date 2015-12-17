@@ -95,7 +95,7 @@ public class Util {
                             .build();
                     //tempAdView.setAdSize(customAdSize);//you have to specify an adsize in xml, and you aren't allowed to set adsize more than once, so... let's hope banner works nicely
                     tempAdView.setAdListener(mv_rAdListener);
-                    tempAdView.setAdUnitId(AD_UNIT_ID);
+                    //tempAdView.setAdUnitId(AD_UNIT_ID);//unneeded?  The ad unit id string fed to the adview in the xml activity layout may be enough
                     tempAdView.loadAd(adRequest);
 
                     return true;
