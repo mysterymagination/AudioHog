@@ -11,8 +11,8 @@ import android.content.IntentFilter;
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.media.AudioManager;
-import android.os.Bundle;
-import android.os.IBinder;
+import android.os.*;
+import android.os.Process;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.RemoteViews;
@@ -45,13 +45,38 @@ public class AudioHogService extends Service {
     private int mv_iAudioFocusDuration = AudioManager.AUDIOFOCUS_GAIN;
     private NotificationManager mNM;
     private NotificationCompat.Builder mNotifyBuilder;
+    private IAudioHog.Stub mv_rStub = new IAudioHog.Stub(){
+
+        @Override
+        public int getPid() throws RemoteException {
+            return Process.myPid();
+        }
+
+        @Override
+        public int getUid() throws RemoteException {
+            return Process.myUid();
+        }
+
+        @Override
+        public void setAudioStream(int streamCode) throws RemoteException {
+            modifyAudioStream(streamCode);
+        }
+
+        @Override
+        public void setAudioFocusDuration(int focusDuration) throws RemoteException {
+            modifyAudioFocusDuration(focusDuration);
+        }
+
+
+    };
+
 
 
     public AudioHogService() {
     }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState){
+    public void onCreate(){
         super.onCreate();
 
         mAudioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
@@ -85,7 +110,7 @@ public class AudioHogService extends Service {
 
         mStatelyMediaPlayer.release();
         unregisterReceiver(mPlayPauseReceiver);
-        abandonAudioFocus(mv_rAudioFocusListener);
+        abandonAudioFocus(mv_rAudioFocusChangeListener);
     }
 
 
@@ -94,11 +119,13 @@ public class AudioHogService extends Service {
     //can handle the recent tasks swipe-out thingy gracefully (currently the notif sticks
     // around forever -- not abundantly clear why)
 
+
     @Override
     public IBinder onBind(Intent intent) {
-        // TODO: Return the communication channel to the service.
-        throw new UnsupportedOperationException("Not yet implemented");
+        // TODOx: Return the communication channel to the service.
+        return mv_rStub;
     }
+
 
     //stately mediaplayer stuff
     public void modifyAudioStream(int newStream){
@@ -217,17 +244,17 @@ public class AudioHogService extends Service {
             Log.v(TAG, "take release rec -- received a take/release command from notif");
             if(intent.getAction().equals(ACTION_RELEASE_AUDIO_FOCUS)){
                 Log.v(TAG, "take release rec -- received a release command from notif");
-                if(abandonAudioFocus(mv_rAudioFocusListener)){
+                if(abandonAudioFocus(mv_rAudioFocusChangeListener)){
                     mv_bAudioFocusHeld = false;
                 }
                 else{
-                    Log.e(TAG,"the hog's request to abandon audio focus over audio focus change listener "+mv_rAudioFocusListener+" failed!");
+                    Log.e(TAG,"the hog's request to abandon audio focus over audio focus change listener "+mv_rAudioFocusChangeListener+" failed!");
                 }
                 updateNotification(NOTIFICATION_RELEASE);
             }
             else if(intent.getAction().equals(ACTION_TAKE_AUDIO_FOCUS)){
                 Log.v(TAG, "take release rec -- received a take command from notif");
-                if(requestAudioFocus(mv_rAudioFocusListener,iAudioStreamID,mv_iAudioFocusDuration)){
+                if(requestAudioFocus(mv_rAudioFocusChangeListener,iAudioStreamID,mv_iAudioFocusDuration)){
                     mv_bAudioFocusHeld = true;
                 }
                 else{
@@ -372,7 +399,7 @@ public class AudioHogService extends Service {
         @Override
         public void onAudioFocusChange(int focusChange) {
 
-            Log.i(TAG,"The audio hog service has just received an onAudioFocusChange callback, with focus state "+resolveAudioFocusState(i));
+            Log.i(TAG,"The audio hog service has just received an onAudioFocusChange callback, with focus state "+resolveAudioFocusState(focusChange));
 
             switch(focusChange){
                 case AudioManager.AUDIOFOCUS_GAIN:{

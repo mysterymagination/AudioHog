@@ -38,7 +38,7 @@
         <service
             android:name=".AudioHogService"
             android:enabled="true"
-            android:exported="false"></service>
+            android:exported="true"></service>
     </application>
 
 </manifest>

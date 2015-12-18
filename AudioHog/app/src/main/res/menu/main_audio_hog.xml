@@ -4,7 +4,11 @@
     >
     <!-- xmlns:app="http://schemas.android.com/apk/res-auto" -->
 
+    <item
+        android:id="@+id/action_bind_service"
 
+        app:showAsAction="never"
+        android:title="Hog service, arise"/>
      <item
         android:id="@+id/action_quit"
   

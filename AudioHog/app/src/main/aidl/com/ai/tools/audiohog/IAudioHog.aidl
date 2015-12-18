@@ -37,11 +37,19 @@ interface IAudioHog {
     */
     void setAudioFocusDuration(int focusDuration);
 
-
     /**
-     * Demonstrates some basic types that you can use as parameters
-     * and return values in AIDL.
-     */
-    void basicTypes(int anInt, long aLong, boolean aBoolean, float aFloat,
-            double aDouble, String aString);
+    * Shuts down the service, releasing its resources
+    */
+    void exit();
+
+    void playAudio();
+
+    void pauseAudio();
+
+    void takeAudioFocus();
+
+    void releaseAudioFocus();
+
+
+
 }
