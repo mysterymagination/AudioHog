@@ -154,15 +154,20 @@ public class StatelyMediaPlayer extends android.media.MediaPlayer {
     }
  
     public boolean isInStarted() {
-    	boolean tempStartState = mState == MPStates.STARTED;
-    	boolean tempIsPlaying = this.isPlaying();
-    	
-    	if(tempStartState && !tempIsPlaying || !tempStartState && tempIsPlaying){
-    		//Something's odd with the FSM -- when playing we should be in the 
-    		//STARTED state
-    		Log.w(TAG, "Somehow our FSM is in an odd state, as our isInStartState returns "+tempStartState+" and our mediaplayer.isPlaying() returns "+tempIsPlaying);
-    	}
-        return tempStartState;//(mState == MPStates.STARTED || this.isPlaying());
+        try {
+            boolean tempStartState = mState == MPStates.STARTED;
+            boolean tempIsPlaying = this.isPlaying();
+
+            if (tempStartState && !tempIsPlaying || !tempStartState && tempIsPlaying) {
+                //Something's odd with the FSM -- when playing we should be in the
+                //STARTED state
+                Log.w(TAG, "Somehow our FSM is in an odd state, as our isInStartState returns " + tempStartState + " and our mediaplayer.isPlaying() returns " + tempIsPlaying);
+            }
+            return tempStartState;//(mState == MPStates.STARTED || this.isPlaying());
+        }catch(IllegalStateException e){
+            Log.e(TAG,"audio hog -- in isInStarted; illegal state ex thrown while trying to check whether or not the statelymediaplayer is playing");
+            return false;
+        }
     }
  
     public boolean isInPaused() {

@@ -38,17 +38,29 @@ interface IAudioHog {
     void setAudioFocusDuration(int focusDuration);
 
     /**
-    * Shuts down the service, releasing its resources
+    * Calls the service's stopSelf() method so that it will be destroyed as soon as there are no more components binding it
     */
     void exit();
 
+    /**
+    * Starts the interference audio on the selected audio stream.  Does not modify audio focus
+    */
     void playAudio();
 
+    /**
+    * Pauses the interference audio on the selected audio stream. Does not modify audio focus
+    */
     void pauseAudio();
 
-    void takeAudioFocus();
+    /**
+    * Takes audio focus over the selected audio stream for the selected duration. Does not modify interfering audio playback
+    */
+    boolean takeAudioFocus();
 
-    void releaseAudioFocus();
+    /**
+    * Abandons audio focus. Does not modify interfering audio playback
+    */
+    boolean releaseAudioFocus();
 
 
 

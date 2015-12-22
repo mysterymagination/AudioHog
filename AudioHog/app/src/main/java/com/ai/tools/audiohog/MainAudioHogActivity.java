@@ -102,7 +102,12 @@ public class MainAudioHogActivity extends Activity {
 
         //bind to service
         Intent serviceIntent = new Intent(this,AudioHogService.class);
+        startService(serviceIntent);//start it so that it can persist if the activity unbinds
         bindService(serviceIntent,mv_rServiceConnection,Context.BIND_AUTO_CREATE);
+
+        //since the menu tries to init part of the service, we need to only set it up after the
+        //service is bound
+        //initUI();
 
     }//end onCreate()
 
@@ -134,6 +139,9 @@ public class MainAudioHogActivity extends Activity {
         //kill the ad refresh loop
         //mv_rHandler.getLooper().quit();//can't do this with a handler that is using the main thread's looper!
 
+        //unbind the service (it will persist if it has not been stopped via serviceinterface::exit())
+        unbindService(mv_rServiceConnection);
+
     }
 
     @Override
@@ -154,7 +162,11 @@ public class MainAudioHogActivity extends Activity {
                 finish();
                 return true;
             case R.id.action_exit_service:
-                mv_rServiceInterface.exit();
+                try {
+                    mv_rServiceInterface.exit();
+                }catch(RemoteException e){
+                    Log.e(TAG,"audio hog -- attempting to exit the service threw remote ex",e);
+                }
                 return true;
             case R.id.action_bind_service:
                 Intent serviceIntent = new Intent(this,AudioHogService.class);
@@ -192,9 +204,10 @@ public class MainAudioHogActivity extends Activity {
         mStreamAdapter = new StreamAdapter(this,R.layout.simple_spinner,this.getResources().getStringArray(R.array.audio_stream_type_array));
         mStreamAdapter.setDropDownViewResource(R.layout.simple_spinner_dropdown_item);
         mAudioStream_SP.setAdapter(mStreamAdapter);
+        mAudioStream_SP.setSelection(0, false);//keeps the implicit onItemSelected call from occurring when the onitemselectedlistener is added prior to layout.  See http://stackoverflow.com/questions/2562248/how-to-keep-onitemselected-from-firing-off-on-a-newly-instantiated-spinner#answer-17336944
 
 
-        mAudioStream_SP.setOnItemSelectedListener(new OnItemSelectedListener(){
+        mAudioStream_SP.setOnItemSelectedListener(new OnItemSelectedListener() {
 
             @Override
             public void onItemSelected(AdapterView<?> arg0, View arg1,
@@ -228,13 +241,13 @@ public class MainAudioHogActivity extends Activity {
                         iChosenAudioStream = AudioManager.USE_DEFAULT_STREAM_TYPE;
                         break;
                 }
-                try{
-                    if(iChosenAudioStream != -1) {
+                try {
+                    if (iChosenAudioStream != -1) {
                         mv_rServiceInterface.setAudioStream(iChosenAudioStream);
                     }
 
-                }catch(RemoteException e){
-                    Log.e(TAG,"audio hog -- remote exception thrown while setting audio stream to "+AudioHogService.resolveAudioStream(iChosenAudioStream));
+                } catch (RemoteException e) {
+                    Log.e(TAG, "audio hog -- remote exception thrown while setting audio stream to " + AudioHogService.resolveAudioStream(iChosenAudioStream));
                 }
 
 
@@ -251,6 +264,7 @@ public class MainAudioHogActivity extends Activity {
         mFocusAdapter = new FocusAdapter(this,R.layout.simple_spinner,this.getResources().getStringArray(R.array.audio_focus_type_array));
         mFocusAdapter.setDropDownViewResource(R.layout.simple_spinner_dropdown_item);
         mAudioFocusDuration_SP.setAdapter(mFocusAdapter);
+        mAudioFocusDuration_SP.setSelection(0, false);//keeps the implicit onItemSelected call from occurring when the onitemselectedlistener is added prior to layout. See http://stackoverflow.com/questions/2562248/how-to-keep-onitemselected-from-firing-off-on-a-newly-instantiated-spinner#answer-17336944
 
 
         mAudioFocusDuration_SP.setOnItemSelectedListener(new OnItemSelectedListener(){
@@ -310,7 +324,11 @@ public class MainAudioHogActivity extends Activity {
 
             @Override
             public void onClick(View v) {
-                mv_rServiceInterface.pauseAudio();
+                try {
+                    mv_rServiceInterface.pauseAudio();
+                }catch(RemoteException e){
+                    Log.e(TAG,"audio hog -- remote exception thrown while pausing audio",e);
+                }
 
 
             }
@@ -322,7 +340,11 @@ public class MainAudioHogActivity extends Activity {
 
             @Override
             public void onClick(View v) {
-                mv_rServiceInterface.playAudio();
+                try{
+                    mv_rServiceInterface.playAudio();
+                }catch(RemoteException e){
+                    Log.e(TAG,"audio hog -- remote exception thrown while playing audio",e);
+                }
 
 
             }
@@ -333,11 +355,14 @@ public class MainAudioHogActivity extends Activity {
 
             @Override
             public void onClick(View v) {
-                if(requestAudioFocus(mv_rAudioFocusListener,iAudioStreamID,mv_iAudioFocusDuration)){
-                    mv_bAudioFocusHeld = true;
-                }
-                else{
-                    Log.e(TAG,"the hog's request to take audio focus over stream "+resolveAudioStream(iAudioStreamID)+" for duration "+resolveAudioFocusState(mv_iAudioFocusDuration)+" failed!");
+                try {
+                    boolean bRes = mv_rServiceInterface.takeAudioFocus();
+                    if (!bRes) {
+
+                        Log.e(TAG, "the hog's request to take audio focus failed!");
+                    }
+                }catch(RemoteException e){
+                    Log.e(TAG,"audio hog -- in requestaudiofocus onclick; remote ex thrown while trying to take audio focus",e);
                 }
 
             }
@@ -348,11 +373,14 @@ public class MainAudioHogActivity extends Activity {
 
             @Override
             public void onClick(View v) {
-                if(abandonAudioFocus(mv_rAudioFocusListener)){
-                    mv_bAudioFocusHeld = false;
-                }
-                else{
-                    Log.e(TAG,"the hog's request to abandon audio focus over audio focus change listener "+mv_rAudioFocusListener+" failed!");
+                try {
+                    boolean bRes = mv_rServiceInterface.releaseAudioFocus();
+                    if (!bRes) {
+
+                        Log.e(TAG, "the hog's request to release audio focus failed!");
+                    }
+                }catch(RemoteException e){
+                    Log.e(TAG,"audio hog -- in abandonaudiofocus onclick; remote ex thrown while trying to release audio focus",e);
                 }
 
             }

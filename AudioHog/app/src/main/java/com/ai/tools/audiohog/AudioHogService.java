@@ -41,7 +41,7 @@ public class AudioHogService extends Service {
     private AudioManager mAudioManager;
     private AssetManager mAssetManager;
     private StatelyMediaPlayer mStatelyMediaPlayer;
-    private int iAudioStreamID = AudioManager.STREAM_ALARM;
+    private int mv_iAudioStreamID = AudioManager.STREAM_ALARM;
     private int mv_iAudioFocusDuration = AudioManager.AUDIOFOCUS_GAIN;
     private NotificationManager mNM;
     private NotificationCompat.Builder mNotifyBuilder;
@@ -65,6 +65,45 @@ public class AudioHogService extends Service {
         @Override
         public void setAudioFocusDuration(int focusDuration) throws RemoteException {
             modifyAudioFocusDuration(focusDuration);
+        }
+
+        @Override
+        public void exit() throws RemoteException {
+            stopSelf();
+        }
+
+        @Override
+        public void playAudio() throws RemoteException {
+            playInterferingAudio();
+        }
+
+        @Override
+        public void pauseAudio() throws RemoteException {
+            pauseInterferingAudio();
+        }
+
+        @Override
+        public boolean takeAudioFocus() throws RemoteException {
+            boolean bRes = requestAudioFocus(mv_rAudioFocusChangeListener, mv_iAudioStreamID,mv_iAudioFocusDuration);
+            if(bRes) {
+                mv_bAudioFocusHeld = true;
+            }
+            else{
+                Log.e(TAG, "the hog's request to take audio focus over stream " + resolveAudioStream(mv_iAudioStreamID) + " for duration " + resolveAudioFocusState(mv_iAudioFocusDuration) + " failed!");
+            }
+            return bRes;
+        }
+
+        @Override
+        public boolean releaseAudioFocus() throws RemoteException {
+            boolean bRes = abandonAudioFocus(mv_rAudioFocusChangeListener);
+            if(bRes) {
+                mv_bAudioFocusHeld = false;
+            }
+            else{
+                Log.e(TAG,"the hog's request to abandon audio focus over audio focus change listener "+mv_rAudioFocusChangeListener+" failed!");
+            }
+            return bRes;
         }
 
 
@@ -110,6 +149,7 @@ public class AudioHogService extends Service {
 
         mStatelyMediaPlayer.release();
         unregisterReceiver(mPlayPauseReceiver);
+        unregisterReceiver(mTakeReleaseFocusReceiver);
         abandonAudioFocus(mv_rAudioFocusChangeListener);
     }
 
@@ -129,7 +169,7 @@ public class AudioHogService extends Service {
 
     //stately mediaplayer stuff
     public void modifyAudioStream(int newStream){
-        iAudioStreamID = newStream;
+        mv_iAudioStreamID = newStream;
 
         //stop the player if already past prepared state
         if(mStatelyMediaPlayer.isReady()){
@@ -159,12 +199,12 @@ public class AudioHogService extends Service {
         try {
             AssetFileDescriptor afd = mAssetManager.openFd("winter.mp3");
             mStatelyMediaPlayer.setDataSource(afd.getFileDescriptor());
-            Log.i(TAG, "initStatelyMediaPlayer() called with iAudioStreamID of " + iAudioStreamID);
+            Log.i(TAG, "initStatelyMediaPlayer() called with mv_iAudioStreamID of " + mv_iAudioStreamID);
 
-            //int audioReqState = mAudioManager.requestAudioFocus(this, iAudioStreamID, AudioManager.AUDIOFOCUS_GAIN);
+            //int audioReqState = mAudioManager.requestAudioFocus(this, mv_iAudioStreamID, AudioManager.AUDIOFOCUS_GAIN);
             //if(audioReqState == AudioManager.AUDIOFOCUS_REQUEST_GRANTED){
             Log.i(TAG, "audio focus was granted to the hog");
-            mStatelyMediaPlayer.setAudioStream(iAudioStreamID);
+            mStatelyMediaPlayer.setAudioStream(mv_iAudioStreamID);
             try {
                 mStatelyMediaPlayer.prepare();
             } catch (IllegalStateException e) {
@@ -194,26 +234,44 @@ public class AudioHogService extends Service {
     /**
      * Starts playing audio from the audio asset file descriptor
      */
-    public void playAudio(){
+    public boolean playInterferingAudio(){
+        boolean bSuccess = false;
         if(!mStatelyMediaPlayer.isReady()){
             try {
                 AssetFileDescriptor afd = mAssetManager.openFd("winter.mp3");
                 initStatelyMediaPlayer();
+                mStatelyMediaPlayer.start();
+                Log.d(TAG, "audio should be playing now");
+
+                updateNotification(NOTIFICATION_PLAY);
+                bSuccess = true;
             } catch (IOException e1) {
 
-                e1.printStackTrace();
+                Log.e(TAG,"audio hog -- in playInterferingAudio; io ex thrown",e1);
+            } catch(IllegalStateException e){
+                Log.e(TAG,"audio hog -- in playInterferingAudio; illstate ex thrown",e);
             }
         }
 
-        mStatelyMediaPlayer.start();
-        Log.d(TAG,"audio should be playing now");
 
-        updateNotification(NOTIFICATION_PLAY);
+        return bSuccess;
 
     }
-    public void pauseAudio(){
-        mStatelyMediaPlayer.pause();
-        updateNotification(NOTIFICATION_PAUSE);
+    /**
+     * Pauses playback of audio from the audio asset file descriptor
+     */
+    public boolean pauseInterferingAudio(){
+        boolean bSuccess = false;
+        try {
+            mStatelyMediaPlayer.pause();
+            updateNotification(NOTIFICATION_PAUSE);
+            bSuccess = true;
+        }catch(IllegalStateException e){
+            Log.e(TAG,"audio hog -- in pauseInterferingAudio; illstateex thrown while trying to call statelymediaplayer::pause",e);
+        }
+
+        return bSuccess;
+
     }
 
 
@@ -225,12 +283,12 @@ public class AudioHogService extends Service {
             Log.v(TAG, "playpause rec -- received a play/pause command from notif");
             if(intent.getAction().equals(ACTION_PLAY_AUDIO)){
                 Log.v(TAG, "playpause rec -- received a play command from notif");
-                playAudio();
+                playInterferingAudio();
                 updateNotification(NOTIFICATION_PAUSE);
             }
             else if(intent.getAction().equals(ACTION_PAUSE_AUDIO)){
                 Log.v(TAG, "playpause rec -- received a pause command from notif");
-                pauseAudio();
+                pauseInterferingAudio();
                 updateNotification(NOTIFICATION_PLAY);
             }
 
@@ -254,11 +312,11 @@ public class AudioHogService extends Service {
             }
             else if(intent.getAction().equals(ACTION_TAKE_AUDIO_FOCUS)){
                 Log.v(TAG, "take release rec -- received a take command from notif");
-                if(requestAudioFocus(mv_rAudioFocusChangeListener,iAudioStreamID,mv_iAudioFocusDuration)){
+                if(requestAudioFocus(mv_rAudioFocusChangeListener, mv_iAudioStreamID,mv_iAudioFocusDuration)){
                     mv_bAudioFocusHeld = true;
                 }
                 else{
-                    Log.e(TAG,"the hog's request to take audio focus over stream "+resolveAudioStream(iAudioStreamID)+" for duration "+resolveAudioFocusState(mv_iAudioFocusDuration)+" failed!");
+                    Log.e(TAG,"the hog's request to take audio focus over stream "+resolveAudioStream(mv_iAudioStreamID)+" for duration "+resolveAudioFocusState(mv_iAudioFocusDuration)+" failed!");
                 }
                 updateNotification(NOTIFICATION_TAKE);
             }
