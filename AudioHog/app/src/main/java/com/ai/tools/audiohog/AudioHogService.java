@@ -128,9 +128,10 @@ public class AudioHogService extends Service {
         IntentFilter takeReleaseFocusFilter = new IntentFilter();
         takeReleaseFocusFilter.addAction(ACTION_RELEASE_AUDIO_FOCUS);
         takeReleaseFocusFilter.addAction(ACTION_TAKE_AUDIO_FOCUS);
-        registerReceiver(mTakeReleaseFocusReceiver,takeReleaseFocusFilter);
+        registerReceiver(mTakeReleaseFocusReceiver, takeReleaseFocusFilter);
         mNM = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
         updateNotification(NOTIFICATION_PLAY);
+        Log.d(TAG,"audio hog service -- in onCreate");
 
     }
 
@@ -138,7 +139,7 @@ public class AudioHogService extends Service {
     public void onDestroy(){
         super.onDestroy();
 
-        mNM.cancel(NOTIFICATION);
+        //mNM.cancel(NOTIFICATION);
 
         if(mStatelyMediaPlayer.isInStarted() || mStatelyMediaPlayer.isInPaused()){
             if(mStatelyMediaPlayer.isInStarted()){
@@ -151,6 +152,11 @@ public class AudioHogService extends Service {
         unregisterReceiver(mPlayPauseReceiver);
         unregisterReceiver(mTakeReleaseFocusReceiver);
         abandonAudioFocus(mv_rAudioFocusChangeListener);
+
+        //cancel the notif last because abandonAudioFocus above
+        //will call updateNotif
+        Log.d(TAG,"audio hog service -- in onDestroy; about to cancel the notif");
+        mNM.cancel(NOTIFICATION);
     }
 
 
@@ -438,7 +444,7 @@ public class AudioHogService extends Service {
         return iRet == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
     }
     /**
-     * Abandons audio focus
+     * Abandons audio focus and updates the take/release state of the notif
      * @return true if abandoned successfully (request_granted), false otherwise
      */
     public boolean abandonAudioFocus(AudioManager.OnAudioFocusChangeListener listener){

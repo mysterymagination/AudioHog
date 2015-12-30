@@ -286,6 +286,7 @@ public class MainAudioHogActivity extends Activity {
                     case POS_DUR_GAIN_TRANSIENT_MAY_DUCK:
                         iAudioFocusDuration = AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK;
                         break;
+                    /*//no reason to include the loss states on the user-control side
                     case POS_DUR_LOSS:
                         iAudioFocusDuration = AudioManager.AUDIOFOCUS_LOSS;
                         break;
@@ -295,6 +296,7 @@ public class MainAudioHogActivity extends Activity {
                     case POS_DUR_LOSS_TRANSIENT_CAN_DUCK:
                         iAudioFocusDuration = AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK;
                         break;
+                    */
                 }
 
                 try {

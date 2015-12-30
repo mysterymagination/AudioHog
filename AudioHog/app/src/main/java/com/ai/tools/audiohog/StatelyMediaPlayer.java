@@ -165,7 +165,7 @@ public class StatelyMediaPlayer extends android.media.MediaPlayer {
             }
             return tempStartState;//(mState == MPStates.STARTED || this.isPlaying());
         }catch(IllegalStateException e){
-            Log.e(TAG,"audio hog -- in isInStarted; illegal state ex thrown while trying to check whether or not the statelymediaplayer is playing");
+            Log.e(TAG,"audio hog -- in isInStarted; illegal state ex thrown while trying to check whether or not the statelymediaplayer is playing.  The FSM thinks we are in state "+mState);
             return false;
         }
     }
@@ -189,6 +189,8 @@ public class StatelyMediaPlayer extends android.media.MediaPlayer {
     public boolean isInPlaybackCompleted() {
         return (mState == MPStates.PLAYBACKCOMPLETED);
     }
+
+
     
     //TODOx: add the remaining state checks like template above
     
