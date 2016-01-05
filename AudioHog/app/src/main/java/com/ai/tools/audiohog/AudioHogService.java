@@ -238,11 +238,11 @@ public class AudioHogService extends Service {
     }
 
     /**
-     * Starts playing audio from the audio asset file descriptor
+     * Starts playing audio from the audio asset file descriptor, initializing the mediaplayer if necessary
      */
     public boolean playInterferingAudio(){
         boolean bSuccess = false;
-        if(!mStatelyMediaPlayer.isReady()){
+        if(!mStatelyMediaPlayer.isReady()){//mediaplayer needs to be initialized
             try {
                 AssetFileDescriptor afd = mAssetManager.openFd("winter.mp3");
                 initStatelyMediaPlayer();
@@ -255,7 +255,19 @@ public class AudioHogService extends Service {
 
                 Log.e(TAG,"audio hog -- in playInterferingAudio; io ex thrown",e1);
             } catch(IllegalStateException e){
-                Log.e(TAG,"audio hog -- in playInterferingAudio; illstate ex thrown",e);
+                Log.e(TAG,"audio hog -- in playInterferingAudio; illstate ex thrown by start()",e);
+            }
+        }
+        else{//mediaplayer is already init
+            try{
+                mStatelyMediaPlayer.start();
+                Log.d(TAG, "audio should be playing now");
+
+                updateNotification(NOTIFICATION_PLAY);
+                bSuccess = true;
+
+            } catch(IllegalStateException e){
+                Log.e(TAG,"audio hog -- in playInterferingAudio; illstate ex thrown by start()",e);
             }
         }
 
