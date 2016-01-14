@@ -20,10 +20,10 @@
     <string name="audio_focus_loss_transient">LOSS_TRANSIENT</string>
     <string name="audio_focus_loss_transient_can_duck">LOSS_TRANSIENT_CAN_DUCK</string>
     <string name="hog_notification">AudioHog Notification</string>
-    <string name="hog_notification_play">AudioHog Notification Play</string>
-    <string name="hog_notification_pause">AudioHog Notification Pause</string>
-    <string name="hog_notification_take">AudioHog Notification Take Audio Focus</string>
-    <string name="hog_notification_release">AudioHog Notification Release Audio Focus</string>
+    <string name="hog_notification_play">AudioHog Notification Playing</string>
+    <string name="hog_notification_pause">AudioHog Notification Pausing</string>
+    <string name="hog_notification_take">AudioHog Notification Audio Focus Taken</string>
+    <string name="hog_notification_release">AudioHog Notification Audio Focus Released</string>
 
     <string name="banner_ad_unit_id">fill in with your own ad unit id</string>
     <string name="banner_ad_unit_name">fill in with your own ad unit name</string>
