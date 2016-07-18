@@ -8,12 +8,10 @@ tools:ignore="TypographyDashes">
     <bool name="ga_autoActivityTracking">true</bool>
 
     <!-- The screen names that will appear in reports -->
-    <screenName name="com.hdradio.fmplus.core.RadioActivity">
-        FM+ RadioActivityScreen
+    <screenName name="com.ai.tools.audiohog.MainAudioHogActivity">
+        Main AudioHog Activity
     </screenName>
-    <screenName name="com.hdradio.fmplus.core.StationGuideFragment">
-        FM+ StationGuideFragment
-    </screenName>
+
     
     
 </resources>
