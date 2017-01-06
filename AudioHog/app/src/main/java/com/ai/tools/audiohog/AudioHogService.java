@@ -201,40 +201,41 @@ public class AudioHogService extends Service {
             mStatelyMediaPlayer.reset();
         }
 
-
-
         try {
             AssetFileDescriptor afd = mAssetManager.openFd("winter.mp3");
-            mStatelyMediaPlayer.setDataSource(afd.getFileDescriptor());
-            Log.i(TAG, "initStatelyMediaPlayer() called with mv_iAudioStreamID of " + mv_iAudioStreamID);
+            try{
+                Log.i(TAG,"audio hog -- initStatelyMediaPlayer; asset file descriptor returned for winter.mp3 is "+afd);
+                mStatelyMediaPlayer.setDataSource(afd.getFileDescriptor());
 
-            //int audioReqState = mAudioManager.requestAudioFocus(this, mv_iAudioStreamID, AudioManager.AUDIOFOCUS_GAIN);
-            //if(audioReqState == AudioManager.AUDIOFOCUS_REQUEST_GRANTED){
-            Log.i(TAG, "audio focus was granted to the hog");
-            mStatelyMediaPlayer.setAudioStream(mv_iAudioStreamID);
-            try {
-                mStatelyMediaPlayer.prepare();
-            } catch (IllegalStateException e) {
-                Log.e(TAG, "audio hog -- illegalstate ex thrown while preparing the stately mediaplayer", e);
 
-            } catch (IOException e) {
-                Log.e(TAG, "audio hog -- io ex thrown while preparing the stately mediaplayer", e);
+                Log.i(TAG, "initStatelyMediaPlayer() called with mv_iAudioStreamID of " + mv_iAudioStreamID);
+
+                //int audioReqState = mAudioManager.requestAudioFocus(this, mv_iAudioStreamID, AudioManager.AUDIOFOCUS_GAIN);
+                //if(audioReqState == AudioManager.AUDIOFOCUS_REQUEST_GRANTED){
+                //Log.i(TAG, "audio focus was granted to the hog");
+                mStatelyMediaPlayer.setAudioStream(mv_iAudioStreamID);
+                try {
+                    mStatelyMediaPlayer.prepare();
+                } catch (IllegalStateException e) {
+                    Log.e(TAG, "audio hog -- illegalstate ex thrown while preparing the stately mediaplayer", e);
+
+                } catch (IOException e) {
+                    Log.e(TAG, "audio hog -- io ex thrown while preparing the stately mediaplayer", e);
+                }
+                mStatelyMediaPlayer.setLooping(true);
+                Log.d(TAG,"audio successfully acquired, initialized, and prepared");
+
+            }catch(IOException e){
+                Log.e(TAG,"audio hog -- io exception thrown while trying to set mediaplayer data source",e);
+            } catch (IllegalArgumentException e1) {
+                Log.e(TAG,"audio hog -- illegalargument ex thrown while trying to set mediaplayer data source",e1);
+            } catch (IllegalStateException e1) {
+                Log.e(TAG, "audio hog -- illegalstate ex thrown while trying to set mediaplayer data source", e1);
 
             }
-            mStatelyMediaPlayer.setLooping(true);
-            Log.d(TAG,"audio successfully prepared");
-        } catch (IllegalArgumentException e1) {
-            Log.e(TAG,"audio hog -- illegalargument ex thrown while initializing the stately mediaplayer",e1);
-        } catch (IllegalStateException e1) {
-            Log.e(TAG, "audio hog -- illegalstate ex thrown while initializing the stately mediaplayer", e1);
-
-        } catch (IOException e1) {
-            Log.e(TAG, "audio hog -- io ex thrown while initializing the stately mediaplayer", e1);
-
+        }catch(IOException e){
+            Log.e(TAG,"audio hog -- io ex thrown while initializing the stately mediaplayer. failed to open fd to audio asset",e);
         }
-
-
-
 
     }
 
@@ -447,7 +448,7 @@ public class AudioHogService extends Service {
                 0,
                 Intent.makeMainActivity(new ComponentName("com.ai.tools.audiohog","MainAudioHogActivity")),
                 0);
-		notification.contentIntent = launchMainActivityIntent;
+        notification.contentIntent = launchMainActivityIntent;
 		/*
 		// The PendingIntent to launch our activity if the user selects this notification itself
 		PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
@@ -469,7 +470,7 @@ public class AudioHogService extends Service {
      */
     public boolean requestAudioFocus(AudioManager.OnAudioFocusChangeListener listener,int stream,int durationType){
         int iRet = mAudioManager.requestAudioFocus(listener, stream, durationType);
-        Log.d(TAG,"audio focus request results in "+Util.resolveAudioFocusRequestResult(iRet));
+        Log.i(TAG,"audio focus request results in "+Util.resolveAudioFocusRequestResult(iRet));
         if(iRet == AudioManager.AUDIOFOCUS_REQUEST_GRANTED){
             mv_bAudioFocusHeld = true;
             updateNotification(NOTIFICATION_TAKEN);

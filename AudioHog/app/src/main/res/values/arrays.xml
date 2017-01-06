@@ -24,6 +24,7 @@
          <item>@string/audio_focus_gain</item>
          <item>@string/audio_focus_gain_transient</item>
          <item>@string/audio_focus_gain_transient_may_duck</item>
+         <item>@string/audio_focus_gain_transient_exclusive</item>
         <!-- no reason to give the loss states, since they are only delivered by the system based on what the losing component's gain duration was
          <item>@string/audio_focus_loss</item>
          <item>@string/audio_focus_loss_transient</item>

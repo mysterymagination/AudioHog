@@ -16,6 +16,7 @@
     <string name="audio_focus_gain">GAIN</string>
     <string name="audio_focus_gain_transient">GAIN_TRANSIENT</string>
     <string name="audio_focus_gain_transient_may_duck">GAIN_TRANSIENT_MAY_DUCK</string>
+    <string name="audio_focus_gain_transient_exclusive">GAIN_TRANSIENT_EXCLUSIVE</string>
     <string name="audio_focus_loss">LOSS</string>
     <string name="audio_focus_loss_transient">LOSS_TRANSIENT</string>
     <string name="audio_focus_loss_transient_can_duck">LOSS_TRANSIENT_CAN_DUCK</string>

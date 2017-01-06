@@ -59,12 +59,15 @@ public class MainAudioHogActivity extends Activity {
     private final int POS_STREAM_DEFAULT = 7;
 
 
-    private final int POS_DUR_GAIN = 0;
-    private final int POS_DUR_GAIN_TRANSIENT = 1;
-    private final int POS_DUR_GAIN_TRANSIENT_MAY_DUCK = 2;
-    private final int POS_DUR_LOSS = 3;
-    private final int POS_DUR_LOSS_TRANSIENT = 4;
-    private final int POS_DUR_LOSS_TRANSIENT_CAN_DUCK = 5;
+    private final int POS_DUR_GAIN = 0;//causes LOSS to be sent to interrupted focus holder
+    private final int POS_DUR_GAIN_TRANSIENT = 1;//causes LOSS_TRANSIENT to be sent to interrupted focus holder
+    private final int POS_DUR_GAIN_TRANSIENT_MAY_DUCK = 2;//causes LOSS_TRANSIENT_CAN_DUCK to be sent to interrupted focus holder
+    private final int POS_DUR_GAIN_TRANSIENT_EXCLUSIVE = 3;//causes LOSS_TRANSIENT to be sent to interrupted focus holder
+    /*//the losses are served to listeners by the system in response to gains; you can't request a LOSS* duration
+    private final int POS_DUR_LOSS = 4;
+    private final int POS_DUR_LOSS_TRANSIENT = 5;
+    private final int POS_DUR_LOSS_TRANSIENT_CAN_DUCK = 6;
+    */
 
     private Spinner mAudioFocusDuration_SP;
     private boolean mv_bActivityDestroying = false;
@@ -285,6 +288,9 @@ public class MainAudioHogActivity extends Activity {
                         break;
                     case POS_DUR_GAIN_TRANSIENT_MAY_DUCK:
                         iAudioFocusDuration = AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK;
+                        break;
+                    case POS_DUR_GAIN_TRANSIENT_EXCLUSIVE:
+                        iAudioFocusDuration = AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE;
                         break;
                     /*//no reason to include the loss states on the user-control side
                     case POS_DUR_LOSS:
