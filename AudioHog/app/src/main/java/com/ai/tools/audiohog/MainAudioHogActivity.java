@@ -246,7 +246,9 @@ public class MainAudioHogActivity extends Activity {
                 }
                 try {
                     if (iChosenAudioStream != -1) {
-                        mv_rServiceInterface.setAudioStream(iChosenAudioStream);
+                        if(mv_rServiceInterface != null){
+                            mv_rServiceInterface.setAudioStream(iChosenAudioStream);
+                        }
                     }
 
                 } catch (RemoteException e) {
