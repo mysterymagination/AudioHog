@@ -40,7 +40,13 @@ interface IAudioHog {
     /**
     * Calls the service's stopSelf() method so that it will be destroyed as soon as there are no more components binding it
     */
-    void exit();
+    void stopAudioHogService();
+
+    /**
+     * Calls the service's {@link Service#startForeground} method so that it will
+     * run even with no more components binding it and will have foreground scheduling
+     */
+    void startAudioHogService();
 
     /**
     * Starts the interference audio on the selected audio stream.  Does not modify audio focus

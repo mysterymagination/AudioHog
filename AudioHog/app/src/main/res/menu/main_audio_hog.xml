@@ -4,20 +4,25 @@
     >
     <!-- xmlns:app="http://schemas.android.com/apk/res-auto" -->
 
-    <item
-        android:id="@+id/action_bind_service"
-
-        app:showAsAction="never"
-        android:title="Hog service, arise"/>
      <item
-        android:id="@+id/action_quit"
+        android:id="@+id/action_dismiss_activity"
   
         app:showAsAction="never"
-        android:title="Hog, begone"/>
+        android:title="@string/dismiss_activity"/>
     <item
-        android:id="@+id/action_exit_service"
+        android:id="@+id/action_start_service"
 
         app:showAsAction="never"
-        android:title="Hog service, begone"/>
+        android:title="@string/start_service"/>
+    <item
+        android:id="@+id/action_stop_service"
+
+        app:showAsAction="never"
+        android:title="@string/stop_service"/>
+    <item
+        android:id="@+id/action_exit"
+
+        app:showAsAction="never"
+        android:title="@string/exit"/>
 
 </menu>

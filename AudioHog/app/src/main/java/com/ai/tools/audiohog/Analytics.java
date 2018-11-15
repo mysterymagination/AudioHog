@@ -2,13 +2,7 @@ package com.ai.tools.audiohog;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-
-
-
-
-import android.app.Activity;
 import android.content.Context;
-import android.provider.Settings;
 import android.util.Log;
 
 

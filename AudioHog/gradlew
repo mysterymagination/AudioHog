@@ -23,7 +23,7 @@ die ( ) {
     echo
     echo "$*"
     echo
-    exit 1
+    stopAudioHogService 1
 }
 
 # OS specific support (must be 'true' or 'false').

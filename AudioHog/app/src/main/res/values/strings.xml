@@ -25,9 +25,15 @@
     <string name="hog_notification_pause">AudioHog Notification Pausing</string>
     <string name="hog_notification_take">AudioHog Notification Audio Focus Taken</string>
     <string name="hog_notification_release">AudioHog Notification Audio Focus Released</string>
-
-    <string name="banner_ad_unit_id">fill in with your own ad unit id</string>
-    <string name="banner_ad_unit_name">fill in with your own ad unit name</string>
-
+    <string name="play_audio">Play Audio</string>
+    <string name="pause_audio">Pause Audio</string>
+    <string name="req_audio_focus">Request Audio Focus</string>
+    <string name="abdn_audio_focus">Abandon Audio Focus</string>
+    <string name="start_service">Start Service</string>
+    <string name="stop_service">Stop Service</string>
+    <string name="dismiss_activity">Dismiss Activity</string>
+    <string name="exit">Exit</string>
+    <string name="channel_name">Audio Hog Main</string>
+    <string name="channel_description">Audio Hog notification keeps the service alive and provides audio focus manipulation from the status bar</string>
 
 </resources>

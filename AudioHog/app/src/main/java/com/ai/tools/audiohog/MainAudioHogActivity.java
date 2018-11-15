@@ -1,20 +1,14 @@
 package com.ai.tools.audiohog;
 
-import java.io.IOException;
-
 import android.content.ComponentName;
 import android.content.ServiceConnection;
-import android.os.Handler;
 
 
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.app.Activity;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager.NameNotFoundException;
-import android.content.res.AssetFileDescriptor;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Log;
@@ -77,31 +71,12 @@ public class MainAudioHogActivity extends Activity {
 
 
     private FocusAdapter mFocusAdapter;
-    private Handler mv_rHandler = new Handler();
-    private Runnable mv_rAdRefreshRunnable = new Runnable() {
-        @Override
-        public void run() {
-            if(!mv_bActivityDestroying) {
-                //fire up a new ad
-                Util.insertAd(MainAudioHogActivity.this);
-            /* and here comes the "trick" */
-                mv_rHandler.postDelayed(this, 60000);
-            }
-        }
-    };
-
-
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_audio_hog);
         initUI();
-        Util.insertAd(this);
-
-        //start the ad refresh loop
-        mv_rHandler.postDelayed(mv_rAdRefreshRunnable, 60000);
 
         //bind to service
         Intent serviceIntent = new Intent(this,AudioHogService.class);
@@ -115,34 +90,11 @@ public class MainAudioHogActivity extends Activity {
     }//end onCreate()
 
     @Override
-    protected void onResume(){
-        super.onResume();
-
-        Util.resumeAdView(this);
-
-    }
-
-    @Override
-    protected void onPause(){
-        super.onPause();
-
-        Util.pauseAdView(this);
-
-    }
-
-    @Override
     protected void onDestroy(){
         Log.d(TAG, "take release -- onDestroy()");
         super.onDestroy();
         mv_bActivityDestroying = true;
-
-
-        Util.destroyAdView(this);
-
-        //kill the ad refresh loop
-        //mv_rHandler.getLooper().quit();//can't do this with a handler that is using the main thread's looper!
-
-        //unbind the service (it will persist if it has not been stopped via serviceinterface::exit())
+        // unbind the service (it will persist if it has not been stopped via serviceinterface::stopAudioHogService())
         unbindService(mv_rServiceConnection);
 
     }
@@ -161,20 +113,32 @@ public class MainAudioHogActivity extends Activity {
         int id = item.getItemId();
 
         switch(id){
-            case R.id.action_quit:
+            case R.id.action_dismiss_activity:
                 finish();
                 return true;
-            case R.id.action_exit_service:
+            case R.id.action_stop_service:
                 try {
-                    mv_rServiceInterface.exit();
+                    mv_rServiceInterface.stopAudioHogService();
                 }catch(RemoteException e){
-                    Log.e(TAG,"audio hog -- attempting to exit the service threw remote ex",e);
+                    Log.e(TAG,"audio hog -- attempting to stopAudioHogService the service threw remote ex",e);
                 }
                 return true;
-            case R.id.action_bind_service:
-                Intent serviceIntent = new Intent(this,AudioHogService.class);
-                bindService(serviceIntent,mv_rServiceConnection,Context.BIND_AUTO_CREATE);
-
+            case R.id.action_start_service:
+                try {
+                    mv_rServiceInterface.startAudioHogService();
+                }catch(RemoteException e){
+                    Log.e(TAG,"audio hog -- attempting to startAudioHogService the service threw remote ex",e);
+                }
+                return true;
+            case R.id.action_exit:
+                // 1. stop the service
+                try {
+                    mv_rServiceInterface.stopAudioHogService();
+                }catch(RemoteException e){
+                    Log.e(TAG,"audio hog -- attempting to stopAudioHogService the service threw remote ex",e);
+                }
+                // 2. close activity, which also unbinds from service
+                finish();
                 return true;
         }
 

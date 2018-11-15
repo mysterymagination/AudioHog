@@ -1,6 +1,7 @@
 package com.ai.tools.audiohog;
 
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -14,7 +15,7 @@ import android.content.res.AssetManager;
 import android.media.AudioManager;
 import android.os.*;
 import android.os.Process;
-import android.support.v4.app.NotificationCompat;
+import androidx.core.app.NotificationCompat;
 import android.util.Log;
 import android.widget.RemoteViews;
 
@@ -30,6 +31,10 @@ public class AudioHogService extends Service {
     private static final int NOTIFICATION_PAUSING = R.string.hog_notification_pause;
     private static final int NOTIFICATION_TAKEN = R.string.hog_notification_take;//...But what I do have are a very particular set of skills, skills I have acquired over a very long init process.  Skills that make me a nightmare for application components like you. If you release audio focus now, that'll be the end of it.  I will not look for you, I will not pursue you.  But if you don't, I will look for you, I will find you, and I will kill you. --The OOM Killer
     private static final int NOTIFICATION_RELEASED = R.string.hog_notification_release;
+    /**
+     * Channel ID for the custom notification channel
+     */
+    private static final String NOTIFICATION_CHANNEL_ID = "AudioHog Notification Channel";
 
     public final String ACTION_PAUSE_AUDIO = "com.ai.tools.AudioHog.pause_audio";
     public final String ACTION_PLAY_AUDIO = "com.ai.tools.AudioHog.play_audio";
@@ -69,8 +74,13 @@ public class AudioHogService extends Service {
         }
 
         @Override
-        public void exit() throws RemoteException {
+        public void stopAudioHogService() throws RemoteException {
             stopSelf();
+        }
+
+        @Override
+        public void startAudioHogService() throws RemoteException {
+            startForeground(NOTIFICATION,buildNotification());
         }
 
         @Override
@@ -367,6 +377,22 @@ public class AudioHogService extends Service {
 
 
     }
+    private void createNotificationChannel() {
+        // Create the NotificationChannel, but only on API 26+ because
+        // the NotificationChannel class is new and not in the support library
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = getString(R.string.channel_name);
+            String description = getString(R.string.channel_description);
+            int importance = NotificationManager.IMPORTANCE_HIGH;
+            NotificationChannel channel = new NotificationChannel(
+                    NOTIFICATION_CHANNEL_ID, name, importance);
+            channel.setDescription(description);
+            // Register the channel with the system; you can't change the importance
+            // or other notification behaviors after this
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
 
 
 
@@ -385,9 +411,11 @@ public class AudioHogService extends Service {
 
         String text = "Hog Audio";
 
+        //create the custom notification channel iff needed
+        createNotificationChannel();
 
         // Sets an ID for the notification, so it can be updated
-        mNotifyBuilder = new NotificationCompat.Builder(this)
+        mNotifyBuilder = new NotificationCompat.Builder(this,NOTIFICATION_CHANNEL_ID)
                 //.setContentTitle(text)
                 .setSmallIcon(R.mipmap.ic_launcher);
 
