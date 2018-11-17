@@ -20,7 +20,7 @@
     <string name="audio_focus_loss">LOSS</string>
     <string name="audio_focus_loss_transient">LOSS_TRANSIENT</string>
     <string name="audio_focus_loss_transient_can_duck">LOSS_TRANSIENT_CAN_DUCK</string>
-    <string name="hog_notification">AudioHog Notification</string>
+    <string name="hog_notification_id">AudioHog Notification ID</string>
     <string name="hog_notification_play">AudioHog Notification Playing</string>
     <string name="hog_notification_pause">AudioHog Notification Pausing</string>
     <string name="hog_notification_take">AudioHog Notification Audio Focus Taken</string>

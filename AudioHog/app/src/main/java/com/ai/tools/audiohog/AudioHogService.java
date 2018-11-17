@@ -16,6 +16,8 @@ import android.media.AudioManager;
 import android.os.*;
 import android.os.Process;
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+
 import android.util.Log;
 import android.widget.RemoteViews;
 
@@ -26,7 +28,7 @@ public class AudioHogService extends Service {
     public static final String TAG = "AudioHogService";
 
 
-    private static final int NOTIFICATION = R.string.hog_notification;
+    private static final int NOTIFICATION_ID = R.string.hog_notification_id;
     private static final int NOTIFICATION_PLAYING = R.string.hog_notification_play;
     private static final int NOTIFICATION_PAUSING = R.string.hog_notification_pause;
     private static final int NOTIFICATION_TAKEN = R.string.hog_notification_take;//...But what I do have are a very particular set of skills, skills I have acquired over a very long init process.  Skills that make me a nightmare for application components like you. If you release audio focus now, that'll be the end of it.  I will not look for you, I will not pursue you.  But if you don't, I will look for you, I will find you, and I will kill you. --The OOM Killer
@@ -49,7 +51,7 @@ public class AudioHogService extends Service {
     private StatelyMediaPlayer mStatelyMediaPlayer;
     private volatile int mv_iAudioStreamID = AudioManager.STREAM_ALARM;
     private volatile int mv_iAudioFocusDuration = AudioManager.AUDIOFOCUS_GAIN;
-    private NotificationManager mNM;
+    private NotificationManagerCompat mNM;
     private NotificationCompat.Builder mNotifyBuilder;
     private IAudioHog.Stub mv_rStub = new IAudioHog.Stub(){
 
@@ -80,7 +82,12 @@ public class AudioHogService extends Service {
 
         @Override
         public void startAudioHogService() throws RemoteException {
-            startForeground(NOTIFICATION,buildNotification());
+            // the notice argument to buildNotification is currently unused
+            // (the two state machines, audio playing and focus held, are binary
+            // and the mediaplayer's current state is checked to determine what
+            // the icon should change to in order to indicate what commanding
+            // a change will move the state value to)
+            startForeground(NOTIFICATION_ID,buildNotification(NOTIFICATION_PLAYING));
         }
 
         @Override
@@ -140,8 +147,9 @@ public class AudioHogService extends Service {
         takeReleaseFocusFilter.addAction(ACTION_RELEASE_AUDIO_FOCUS);
         takeReleaseFocusFilter.addAction(ACTION_TAKE_AUDIO_FOCUS);
         registerReceiver(mTakeReleaseFocusReceiver, takeReleaseFocusFilter);
-        mNM = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
-        updateNotification(NOTIFICATION_PLAYING);
+        // todo: using notifmancompat did not fix the insanity alerts problem
+        mNM = NotificationManagerCompat.from(this);
+        replaceNotification(NOTIFICATION_PLAYING);
         Log.d(TAG,"audio hog service -- in onCreate");
 
     }
@@ -150,7 +158,7 @@ public class AudioHogService extends Service {
     public void onDestroy(){
         super.onDestroy();
 
-        //mNM.cancel(NOTIFICATION);
+        //mNM.cancel(NOTIFICATION_ID);
 
         if(mStatelyMediaPlayer.isInStarted() || mStatelyMediaPlayer.isInPaused()){
             if(mStatelyMediaPlayer.isInStarted()){
@@ -167,7 +175,7 @@ public class AudioHogService extends Service {
         //cancel the notif last because abandonAudioFocus above
         //will call updateNotif
         Log.d(TAG,"audio hog service -- in onDestroy; about to cancel the notif");
-        mNM.cancel(NOTIFICATION);
+        mNM.cancel(NOTIFICATION_ID);
     }
 
 
@@ -263,7 +271,7 @@ public class AudioHogService extends Service {
                 mStatelyMediaPlayer.start();
                 Log.d(TAG, "audio should be playing now");
 
-                updateNotification(NOTIFICATION_PLAYING);
+                processNotificationAction(NOTIFICATION_PLAYING);
                 bSuccess = true;
             } catch (IOException e1) {
 
@@ -277,7 +285,7 @@ public class AudioHogService extends Service {
                 mStatelyMediaPlayer.start();
                 Log.d(TAG, "audio should be playing now");
 
-                updateNotification(NOTIFICATION_PLAYING);
+                processNotificationAction(NOTIFICATION_PLAYING);
                 bSuccess = true;
 
             } catch(IllegalStateException e){
@@ -298,7 +306,7 @@ public class AudioHogService extends Service {
         boolean bSuccess = false;
         try {
             mStatelyMediaPlayer.pause();
-            updateNotification(NOTIFICATION_PAUSING);
+            processNotificationAction(NOTIFICATION_PAUSING);
             bSuccess = true;
         }catch(IllegalStateException e){
             Log.e(TAG,"audio hog -- in pauseInterferingAudio; illstateex thrown while trying to call statelymediaplayer::pause",e);
@@ -320,14 +328,14 @@ public class AudioHogService extends Service {
                 playInterferingAudio();
 
                 /*//this is taken care of in playInterferingAudio
-                updateNotification(NOTIFICATION_PAUSING);
+                replaceNotification(NOTIFICATION_PAUSING);
                 */
             }
             else if(intent.getAction().equals(ACTION_PAUSE_AUDIO)){
                 Log.v(TAG, "playpause rec -- received a pause command from notif");
                 pauseInterferingAudio();
                 /*//this is taken care of in pauseInterferingAudio
-                updateNotification(NOTIFICATION_PLAYING);
+                replaceNotification(NOTIFICATION_PLAYING);
                 */
             }
 
@@ -348,7 +356,7 @@ public class AudioHogService extends Service {
                     Log.e(TAG,"the hog's request to abandon audio focus over audio focus change listener "+mv_rAudioFocusChangeListener+" failed!");
                 }
                 /*//this is taken care of in abandonAudioFocus above
-                updateNotification(NOTIFICATION_RELEASED);
+                replaceNotification(NOTIFICATION_RELEASED);
                 */
             }
             else if(intent.getAction().equals(ACTION_TAKE_AUDIO_FOCUS)){
@@ -360,80 +368,58 @@ public class AudioHogService extends Service {
                     Log.e(TAG,"the hog's request to take audio focus over stream "+resolveAudioStream(mv_iAudioStreamID)+" for duration "+resolveAudioFocusState(mv_iAudioFocusDuration)+" failed!");
                 }
                 /*//this is taken care of in requestAudioFocus above
-                updateNotification(NOTIFICATION_TAKEN);
+                replaceNotification(NOTIFICATION_TAKEN);
                 */
             }
 
         }
 
     };
-    private void updateNotification(int notice) {
+    private void replaceNotification(int notice) {
 
 
         Notification notification = buildNotification(notice);
 
-        // Send the notification.
-        mNM.notify(NOTIFICATION, notification);
+        // Send the newly created notification --
+        // this will be accompanied by an alert!
+        mNM.notify(NOTIFICATION_ID, notification);
 
 
     }
-    private void createNotificationChannel() {
-        // Create the NotificationChannel, but only on API 26+ because
-        // the NotificationChannel class is new and not in the support library
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = getString(R.string.channel_name);
-            String description = getString(R.string.channel_description);
-            int importance = NotificationManager.IMPORTANCE_HIGH;
-            NotificationChannel channel = new NotificationChannel(
-                    NOTIFICATION_CHANNEL_ID, name, importance);
-            channel.setDescription(description);
-            // Register the channel with the system; you can't change the importance
-            // or other notification behaviors after this
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
+    private void processNotificationAction(int notice){
+        /*
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Log.d(TAG,"processNotificationAction; platform API level is M+");
+            // grab a handle to the current notif object
+            // and configure it
+            Notification notification = mNM.getActiveNotifications()[0].getNotification();
+            configureNotification(notification);
+            // todo: hrm... apparently calling notify triggers the annoying alert
+            // even if we re-use the notification object.  So how does one
+            // update a notification without driving a user insane on Pie?
+            // Check out other music playing apps to see if they display
+            // play/pause buttons in their notification on Pie
+            mNM.notify(NOTIFICATION_ID,notification);
+        }else{
+            // on older platforms the thing to do for updating notifications
+            // seems to have been simply tossing a new one up
+            replaceNotification(notice);
         }
+        */
+
+        replaceNotification(notice);
     }
-
-
-
-
-
-
     /**
-     * Builds the service notifcation that lives in the action bar
-     *
-     *
-     * @param notice -- the code for the particular notification mode we are displaying in
-     * @return -- the completed Notification to be displayed
+     * Sets and updates the properties of the given notification for
+     * Audio Hog actions
+     * @param notification the existing notification object whose properties should be set/updated
      */
-    private Notification buildNotification(int notice) {
-
-
-        String text = "Hog Audio";
-
-        //create the custom notification channel iff needed
-        createNotificationChannel();
-
-        // Sets an ID for the notification, so it can be updated
-        mNotifyBuilder = new NotificationCompat.Builder(this,NOTIFICATION_CHANNEL_ID)
-                //.setContentTitle(text)
-                .setSmallIcon(R.mipmap.ic_launcher);
-
-        // Start of a loop that processes data and then notifies the user
-        mNotifyBuilder.setContentText(text);
-        // Because the ID remains unchanged, the existing notification is
-        // updated.
-        Notification notification = mNotifyBuilder.build();//.getNotification();//.build();
-
-
+    private void configureNotification(Notification notification){
         // Set the expanded content
         RemoteViews contentView = new RemoteViews(getPackageName(), R.layout.notification_standard);
-        //contentView.setTextViewText(R.id.notif_txt_line1, text);
-
 
         // Set a pending intent for the playpause button
         Intent playPauseIntent = new Intent(ACTION_PAUSE_AUDIO);
-
         //TODOx: uncomment when remoteserviceex is resolved
         //UPDATE: switching from button to imagebutton seems to have done the trick... not clear why
         if(mStatelyMediaPlayer.isInStarted()){
@@ -484,8 +470,62 @@ public class AudioHogService extends Service {
 		*/
         //notification.contentIntent = playPauseIntent;//contentIntent;
         notification.flags = Notification.FLAG_ONGOING_EVENT;
+    }
+    private void createNotificationChannel() {
+        // Create the NotificationChannel, but only on API 26+ because
+        // the NotificationChannel class is new and not in the support library
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = getString(R.string.channel_name);
+            String description = getString(R.string.channel_description);
+            int importance = NotificationManager.IMPORTANCE_HIGH;
+            NotificationChannel channel = new NotificationChannel(
+                    NOTIFICATION_CHANNEL_ID, name, importance);
+            channel.setDescription(description);
+            // Register the channel with the system; you can't change the importance
+            // or other notification behaviors after this
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
 
 
+
+
+
+
+    /**
+     * Builds the service notifcation that lives in the action bar
+     *
+     *
+     * @param notice -- the code for the particular notification mode we are displaying in
+     * @return -- the completed Notification to be displayed
+     */
+    private Notification buildNotification(int notice) {
+        String text = "Hog Audio";
+
+        //create the custom notification channel iff needed
+        createNotificationChannel();
+
+        // Sets an ID for the notification, so it can be updated
+        // Only create one builder, which seems to be important for
+        // avoiding repeat alerts
+        if(mNotifyBuilder == null) {
+            mNotifyBuilder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+                    //.setContentTitle(text)
+                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setOngoing(true)
+                    .setOnlyAlertOnce(true)
+            ;
+        }
+        // todo: using the same builder instance did not prevent repeat alerts
+        Log.d(TAG,"buildNotification; builder is "+mNotifyBuilder);
+
+        // Start of a loop that processes data and then notifies the user
+        mNotifyBuilder.setContentText(text);
+        // Because the ID remains unchanged, the existing notification is
+        // updated.
+        Notification notification = mNotifyBuilder.build();//.getNotification();//.build();
+        configureNotification(notification);
         return notification;
 
     }
@@ -501,7 +541,7 @@ public class AudioHogService extends Service {
         Log.i(TAG,"audio focus request results in "+Util.resolveAudioFocusRequestResult(iRet));
         if(iRet == AudioManager.AUDIOFOCUS_REQUEST_GRANTED){
             mv_bAudioFocusHeld = true;
-            updateNotification(NOTIFICATION_TAKEN);
+            processNotificationAction(NOTIFICATION_TAKEN);
         }
         return iRet == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
     }
@@ -514,7 +554,7 @@ public class AudioHogService extends Service {
         Log.d(TAG,"audio focus abandon results in "+Util.resolveAudioFocusRequestResult(iRet));
         if(iRet == AudioManager.AUDIOFOCUS_REQUEST_GRANTED){
             mv_bAudioFocusHeld = false;
-            updateNotification(NOTIFICATION_RELEASED);
+            processNotificationAction(NOTIFICATION_RELEASED);
         }
         return iRet == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
     }
@@ -532,7 +572,7 @@ public class AudioHogService extends Service {
 
                     Log.i(TAG, "audio focus gained");
                     mv_bAudioFocusHeld = true;
-                    updateNotification(NOTIFICATION_TAKEN);
+                    processNotificationAction(NOTIFICATION_TAKEN);
 
                     break;
                 }
@@ -540,7 +580,7 @@ public class AudioHogService extends Service {
 
                     Log.i(TAG, "audio focus gained transiently");
                     mv_bAudioFocusHeld = true;
-                    updateNotification(NOTIFICATION_TAKEN);
+                    processNotificationAction(NOTIFICATION_TAKEN);
 
                     break;
                 }
@@ -548,7 +588,7 @@ public class AudioHogService extends Service {
 
                     Log.i(TAG, "audio focus gained transiently but also exclusively");
                     mv_bAudioFocusHeld = true;
-                    updateNotification(NOTIFICATION_TAKEN);
+                    processNotificationAction(NOTIFICATION_TAKEN);
 
 
                     break;
@@ -557,7 +597,7 @@ public class AudioHogService extends Service {
 
                     Log.i(TAG, "audio focus gained transiently, you may have a duck");
                     mv_bAudioFocusHeld = true;
-                    updateNotification(NOTIFICATION_TAKEN);
+                    processNotificationAction(NOTIFICATION_TAKEN);
 
 
                     break;
@@ -577,7 +617,7 @@ public class AudioHogService extends Service {
                     }
 
                     mv_bAudioFocusHeld = false;
-                    updateNotification(NOTIFICATION_RELEASED);
+                    processNotificationAction(NOTIFICATION_RELEASED);
 
                     break;
                 }
@@ -585,7 +625,7 @@ public class AudioHogService extends Service {
                     Log.i(TAG, "audio focus lost transiently");
 
                     mv_bAudioFocusHeld = false;
-                    updateNotification(NOTIFICATION_RELEASED);
+                    processNotificationAction(NOTIFICATION_RELEASED);
 
                     break;
                 }
@@ -593,7 +633,7 @@ public class AudioHogService extends Service {
                     Log.i(TAG, "audio focus lost transiently, and you can have a duck");
 
                     mv_bAudioFocusHeld = false;
-                    updateNotification(NOTIFICATION_RELEASED);
+                    processNotificationAction(NOTIFICATION_RELEASED);
 
                     break;
                 }
