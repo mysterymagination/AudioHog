@@ -6,7 +6,6 @@ import android.content.ServiceConnection;
 
 import android.media.AudioManager;
 import android.os.Bundle;
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
@@ -22,7 +21,10 @@ import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.AdapterView.OnItemSelectedListener;
 
-public class MainAudioHogActivity extends Activity {
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+
+public class MainAudioHogActivity extends AppCompatActivity {
 
     private static final String TAG = "AudioHog";
 
@@ -86,6 +88,9 @@ public class MainAudioHogActivity extends Activity {
         //since the menu tries to init part of the service, we need to only set it up after the
         //service is bound
         //initUI();
+
+        Toolbar myToolbar = (Toolbar) findViewById(R.id.my_toolbar);
+        setSupportActionBar(myToolbar);
 
     }//end onCreate()
 
