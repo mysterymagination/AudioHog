@@ -28,14 +28,6 @@ public class MainAudioHogActivity extends AppCompatActivity {
 
     private static final String TAG = "AudioHog";
 
-
-
-
-    //private AssetFileDescriptor afd = null;
-    private AudioManager.OnAudioFocusChangeListener mv_rAudioFocusListener;
-    private Analytics mv_rAnalytics;
-
-
     //UI elements
     private Button mPauseAudio_B;
     private Button mStartAudio_B;
@@ -66,11 +58,6 @@ public class MainAudioHogActivity extends AppCompatActivity {
     */
 
     private Spinner mAudioFocusDuration_SP;
-    private boolean mv_bActivityDestroying = false;
-
-    //audiohog service handle
-
-
 
     private FocusAdapter mFocusAdapter;
 
@@ -85,20 +72,15 @@ public class MainAudioHogActivity extends AppCompatActivity {
         startService(serviceIntent);//start it so that it can persist if the activity unbinds
         bindService(serviceIntent,mv_rServiceConnection,Context.BIND_AUTO_CREATE);
 
-        //since the menu tries to init part of the service, we need to only set it up after the
-        //service is bound
-        //initUI();
-
         Toolbar myToolbar = (Toolbar) findViewById(R.id.my_toolbar);
         setSupportActionBar(myToolbar);
 
-    }//end onCreate()
+    }
 
     @Override
     protected void onDestroy(){
         Log.d(TAG, "take release -- onDestroy()");
         super.onDestroy();
-        mv_bActivityDestroying = true;
         // unbind the service (it will persist if it has not been stopped via serviceinterface::stopAudioHogService())
         unbindService(mv_rServiceConnection);
 
@@ -116,7 +98,6 @@ public class MainAudioHogActivity extends AppCompatActivity {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-
         switch(id){
             case R.id.action_dismiss_activity:
                 finish();
@@ -146,7 +127,6 @@ public class MainAudioHogActivity extends AppCompatActivity {
                 finish();
                 return true;
         }
-
 
         return super.onOptionsItemSelected(item);
     }

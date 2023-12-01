@@ -1,14 +1,13 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 28
-
     defaultConfig {
         applicationId "com.ai.tools.audiohog"
         minSdkVersion 14
-        targetSdkVersion 28
-        versionCode 10200
-        versionName "1.2.0"
+        targetSdkVersion 33
+        versionCode 10201
+        versionName "1.2.1"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
         release {
@@ -16,10 +15,25 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    buildFeatures {
+        aidl true
+    }
+    namespace 'com.ai.tools.audiohog'
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+    dependenciesInfo {
+        includeInApk true
+        includeInBundle true
+    }
+    compileSdk 33
+    ndkVersion '26.1.10909125'
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    testImplementation 'junit:junit:4.12'
-    implementation 'androidx.appcompat:appcompat:1.0.1'
+    testImplementation 'junit:junit:4.13.2'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    androidTestImplementation "androidx.test.ext:junit:1.1.5"
 }

@@ -5,12 +5,6 @@ package com.ai.tools.audiohog;
 
 interface IAudioHog {
 
-    /** Request the process ID of this service */
-    int getPid();
-
-    /** Request the user ID of this service */
-    int getUid();
-
     /**
     * Sets the audio stream that audio focus will be taken from, and that the sample audio
     * will play on
@@ -67,7 +61,4 @@ interface IAudioHog {
     * Abandons audio focus. Does not modify interfering audio playback
     */
     boolean releaseAudioFocus();
-
-
-
 }

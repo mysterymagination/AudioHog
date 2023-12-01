@@ -6,15 +6,17 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.media.AudioManager;
 import android.os.*;
 import android.os.Process;
+
+import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
@@ -53,17 +55,8 @@ public class AudioHogService extends Service {
     private volatile int mv_iAudioFocusDuration = AudioManager.AUDIOFOCUS_GAIN;
     private NotificationManagerCompat mNM;
     private NotificationCompat.Builder mNotifyBuilder;
-    private IAudioHog.Stub mv_rStub = new IAudioHog.Stub(){
 
-        @Override
-        public int getPid() throws RemoteException {
-            return Process.myPid();
-        }
-
-        @Override
-        public int getUid() throws RemoteException {
-            return Process.myUid();
-        }
+    private IAudioHog.Stub mv_rStub = new IAudioHog.Stub() {
         //synchronized only because I used aidl directly instead of a bound service w/ messenger for RPC/IPC
         @Override
         public synchronized void setAudioStream(int streamCode) throws RemoteException {
@@ -123,43 +116,37 @@ public class AudioHogService extends Service {
             }
             return bRes;
         }
-
-
     };
 
 
-
-    public AudioHogService() {
-    }
-
     @Override
-    public void onCreate(){
+    public void onCreate() {
         super.onCreate();
 
-        mAudioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+        mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         mStatelyMediaPlayer = new StatelyMediaPlayer();
         mAssetManager = this.getAssets();
         IntentFilter playPauseFilter = new IntentFilter();
         playPauseFilter.addAction(ACTION_PLAY_AUDIO);
         playPauseFilter.addAction(ACTION_PAUSE_AUDIO);
-        registerReceiver(mPlayPauseReceiver,playPauseFilter);
+        registerReceiver(mPlayPauseReceiver, playPauseFilter);
         IntentFilter takeReleaseFocusFilter = new IntentFilter();
         takeReleaseFocusFilter.addAction(ACTION_RELEASE_AUDIO_FOCUS);
         takeReleaseFocusFilter.addAction(ACTION_TAKE_AUDIO_FOCUS);
         registerReceiver(mTakeReleaseFocusReceiver, takeReleaseFocusFilter);
         mNM = NotificationManagerCompat.from(this);
         mNotifyBuilder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID);
-        startForeground(NOTIFICATION_ID,buildNotification(NOTIFICATION_PLAYING));
-        Log.d(TAG,"audio hog service -- in onCreate");
+        startForeground(NOTIFICATION_ID, buildNotification(NOTIFICATION_PLAYING));
+        Log.d(TAG, "audio hog service -- in onCreate");
 
     }
 
     @Override
-    public void onDestroy(){
+    public void onDestroy() {
         super.onDestroy();
 
-        if(mStatelyMediaPlayer.isInStarted() || mStatelyMediaPlayer.isInPaused()){
-            if(mStatelyMediaPlayer.isInStarted()){
+        if (mStatelyMediaPlayer.isInStarted() || mStatelyMediaPlayer.isInPaused()) {
+            if (mStatelyMediaPlayer.isInStarted()) {
                 mStatelyMediaPlayer.pause();
             }
             mStatelyMediaPlayer.stop();
@@ -172,30 +159,22 @@ public class AudioHogService extends Service {
 
         //cancel the notif last because abandonAudioFocus above
         //will call updateNotif
-        Log.d(TAG,"audio hog service -- in onDestroy; about to cancel the notif");
+        Log.d(TAG, "audio hog service -- in onDestroy; about to cancel the notif");
         mNM.cancel(NOTIFICATION_ID);
     }
 
-
-    //TODO: in addition to being a useful way to provide audio interruptions with another
-    //app totally in the foreground, if we have a service manage the ongoing notif we
-    //can handle the recent tasks swipe-out thingy gracefully (currently the notif sticks
-    // around forever -- not abundantly clear why)
-
-
     @Override
     public IBinder onBind(Intent intent) {
-        // TODOx: Return the communication channel to the service.
         return mv_rStub;
     }
 
 
     //stately mediaplayer stuff
-    public void modifyAudioStream(int newStream){
+    public void modifyAudioStream(int newStream) {
         mv_iAudioStreamID = newStream;
 
         //stop the player if already past prepared state
-        if(mStatelyMediaPlayer.isReady()){
+        if (mStatelyMediaPlayer.isReady()) {
             mStatelyMediaPlayer.stop();
         }
 
@@ -203,24 +182,24 @@ public class AudioHogService extends Service {
         //mediaplayer's prepare/prepareAsync calls
         initStatelyMediaPlayer();
     }
-    public void modifyAudioFocusDuration(int duration){
+
+    public void modifyAudioFocusDuration(int duration) {
         mv_iAudioFocusDuration = duration;
     }
 
-    public void initStatelyMediaPlayer(){
+    public void initStatelyMediaPlayer() {
 
-        if(mStatelyMediaPlayer.isInStarted()){
+        if (mStatelyMediaPlayer.isInStarted()) {
             mStatelyMediaPlayer.stop();
             mStatelyMediaPlayer.reset();
-        }
-        else if(mStatelyMediaPlayer.isInStopped()){
+        } else if (mStatelyMediaPlayer.isInStopped()) {
             mStatelyMediaPlayer.reset();
         }
 
         try {
             AssetFileDescriptor afd = mAssetManager.openFd("winter.mp3");
-            try{
-                Log.i(TAG,"audio hog -- initStatelyMediaPlayer; asset file descriptor returned for winter.mp3 is "+afd);
+            try {
+                Log.i(TAG, "audio hog -- initStatelyMediaPlayer; asset file descriptor returned for winter.mp3 is " + afd);
                 mStatelyMediaPlayer.setDataSource(afd.getFileDescriptor());
 
 
@@ -239,18 +218,18 @@ public class AudioHogService extends Service {
                     Log.e(TAG, "audio hog -- io ex thrown while preparing the stately mediaplayer", e);
                 }
                 mStatelyMediaPlayer.setLooping(true);
-                Log.d(TAG,"audio successfully acquired, initialized, and prepared");
+                Log.d(TAG, "audio successfully acquired, initialized, and prepared");
 
-            }catch(IOException e){
-                Log.e(TAG,"audio hog -- io exception thrown while trying to set mediaplayer data source",e);
+            } catch (IOException e) {
+                Log.e(TAG, "audio hog -- io exception thrown while trying to set mediaplayer data source", e);
             } catch (IllegalArgumentException e1) {
-                Log.e(TAG,"audio hog -- illegalargument ex thrown while trying to set mediaplayer data source",e1);
+                Log.e(TAG, "audio hog -- illegalargument ex thrown while trying to set mediaplayer data source", e1);
             } catch (IllegalStateException e1) {
                 Log.e(TAG, "audio hog -- illegalstate ex thrown while trying to set mediaplayer data source", e1);
 
             }
-        }catch(IOException e){
-            Log.e(TAG,"audio hog -- io ex thrown while initializing the stately mediaplayer. failed to open fd to audio asset",e);
+        } catch (IOException e) {
+            Log.e(TAG, "audio hog -- io ex thrown while initializing the stately mediaplayer. failed to open fd to audio asset", e);
         }
 
     }
@@ -260,9 +239,9 @@ public class AudioHogService extends Service {
      *
      *
      */
-    public boolean playInterferingAudio(){
+    public boolean playInterferingAudio() {
         boolean bSuccess = false;
-        if(!mStatelyMediaPlayer.isReady()){//mediaplayer needs to be initialized
+        if (!mStatelyMediaPlayer.isReady()) {//mediaplayer needs to be initialized
             try {
                 AssetFileDescriptor afd = mAssetManager.openFd("winter.mp3");
                 initStatelyMediaPlayer();
@@ -273,21 +252,20 @@ public class AudioHogService extends Service {
                 bSuccess = true;
             } catch (IOException e1) {
 
-                Log.e(TAG,"audio hog -- in playInterferingAudio; io ex thrown",e1);
-            } catch(IllegalStateException e){
-                Log.e(TAG,"audio hog -- in playInterferingAudio; illstate ex thrown by start()",e);
+                Log.e(TAG, "audio hog -- in playInterferingAudio; io ex thrown", e1);
+            } catch (IllegalStateException e) {
+                Log.e(TAG, "audio hog -- in playInterferingAudio; illstate ex thrown by start()", e);
             }
-        }
-        else{//mediaplayer is already init
-            try{
+        } else {//mediaplayer is already init
+            try {
                 mStatelyMediaPlayer.start();
                 Log.d(TAG, "audio should be playing now");
 
                 updateNotification(NOTIFICATION_PLAYING);
                 bSuccess = true;
 
-            } catch(IllegalStateException e){
-                Log.e(TAG,"audio hog -- in playInterferingAudio; illstate ex thrown by start()",e);
+            } catch (IllegalStateException e) {
+                Log.e(TAG, "audio hog -- in playInterferingAudio; illstate ex thrown by start()", e);
             }
         }
 
@@ -295,19 +273,20 @@ public class AudioHogService extends Service {
         return bSuccess;
 
     }
+
     /**
      * Pauses playback of audio from the audio asset file descriptor
      *
      *
      */
-    public boolean pauseInterferingAudio(){
+    public boolean pauseInterferingAudio() {
         boolean bSuccess = false;
         try {
             mStatelyMediaPlayer.pause();
             updateNotification(NOTIFICATION_PAUSING);
             bSuccess = true;
-        }catch(IllegalStateException e){
-            Log.e(TAG,"audio hog -- in pauseInterferingAudio; illstateex thrown while trying to call statelymediaplayer::pause",e);
+        } catch (IllegalStateException e) {
+            Log.e(TAG, "audio hog -- in pauseInterferingAudio; illstateex thrown while trying to call statelymediaplayer::pause", e);
         }
 
         return bSuccess;
@@ -316,20 +295,19 @@ public class AudioHogService extends Service {
 
 
     //Notification stuff
-    private BroadcastReceiver mPlayPauseReceiver = new BroadcastReceiver(){
+    private BroadcastReceiver mPlayPauseReceiver = new BroadcastReceiver() {
 
         @Override
         public void onReceive(Context context, Intent intent) {
             Log.v(TAG, "playpause rec -- received a play/pause command from notif");
-            if(intent.getAction().equals(ACTION_PLAY_AUDIO)){
+            if (intent.getAction().equals(ACTION_PLAY_AUDIO)) {
                 Log.v(TAG, "playpause rec -- received a play command from notif");
                 playInterferingAudio();
 
                 /*//this is taken care of in playInterferingAudio
                 updateNotification(NOTIFICATION_PAUSING);
                 */
-            }
-            else if(intent.getAction().equals(ACTION_PAUSE_AUDIO)){
+            } else if (intent.getAction().equals(ACTION_PAUSE_AUDIO)) {
                 Log.v(TAG, "playpause rec -- received a pause command from notif");
                 pauseInterferingAudio();
                 /*//this is taken care of in pauseInterferingAudio
@@ -340,30 +318,27 @@ public class AudioHogService extends Service {
         }
 
     };
-    private BroadcastReceiver mTakeReleaseFocusReceiver = new BroadcastReceiver(){
+    private BroadcastReceiver mTakeReleaseFocusReceiver = new BroadcastReceiver() {
 
         @Override
         public void onReceive(Context context, Intent intent) {
             Log.v(TAG, "take release rec -- received a take/release command from notif");
-            if(intent.getAction().equals(ACTION_RELEASE_AUDIO_FOCUS)){
+            if (intent.getAction().equals(ACTION_RELEASE_AUDIO_FOCUS)) {
                 Log.v(TAG, "take release rec -- received a release command from notif");
-                if(abandonAudioFocus(mv_rAudioFocusChangeListener)){
+                if (abandonAudioFocus(mv_rAudioFocusChangeListener)) {
                     mv_bAudioFocusHeld = false;
-                }
-                else{
-                    Log.e(TAG,"the hog's request to abandon audio focus over audio focus change listener "+mv_rAudioFocusChangeListener+" failed!");
+                } else {
+                    Log.e(TAG, "the hog's request to abandon audio focus over audio focus change listener " + mv_rAudioFocusChangeListener + " failed!");
                 }
                 /*//this is taken care of in abandonAudioFocus above
                 updateNotification(NOTIFICATION_RELEASED);
                 */
-            }
-            else if(intent.getAction().equals(ACTION_TAKE_AUDIO_FOCUS)){
+            } else if (intent.getAction().equals(ACTION_TAKE_AUDIO_FOCUS)) {
                 Log.v(TAG, "take release rec -- received a take command from notif");
-                if(requestAudioFocus(mv_rAudioFocusChangeListener, mv_iAudioStreamID,mv_iAudioFocusDuration)){
+                if (requestAudioFocus(mv_rAudioFocusChangeListener, mv_iAudioStreamID, mv_iAudioFocusDuration)) {
                     mv_bAudioFocusHeld = true;
-                }
-                else{
-                    Log.e(TAG,"the hog's request to take audio focus over stream "+resolveAudioStream(mv_iAudioStreamID)+" for duration "+resolveAudioFocusState(mv_iAudioFocusDuration)+" failed!");
+                } else {
+                    Log.e(TAG, "the hog's request to take audio focus over stream " + resolveAudioStream(mv_iAudioStreamID) + " for duration " + resolveAudioFocusState(mv_iAudioFocusDuration) + " failed!");
                 }
                 /*//this is taken care of in requestAudioFocus above
                 updateNotification(NOTIFICATION_TAKEN);
@@ -395,7 +370,7 @@ public class AudioHogService extends Service {
                 .setOnlyAlertOnce(true);
 
         // todo: using the same builder instance did not prevent repeat alerts
-        Log.d(TAG,"buildNotification; builder is "+mNotifyBuilder);
+        Log.d(TAG, "buildNotification; builder is " + mNotifyBuilder);
 
         // Start of a loop that processes data and then notifies the user
         mNotifyBuilder.setContentText(text);
@@ -417,6 +392,16 @@ public class AudioHogService extends Service {
 
         // Send the newly created notification --
         // this will be accompanied by an alert!
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
         mNM.notify(NOTIFICATION_ID, notification);
     }
 
