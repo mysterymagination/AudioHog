@@ -35,5 +35,6 @@
     <string name="exit">Exit</string>
     <string name="channel_name">Audio Hog Main</string>
     <string name="channel_description">Audio Hog notification keeps the service alive and provides audio focus manipulation from the status bar</string>
-
+    <string name="take_audio_focus">Take Audio Focus</string>
+    <string name="release_audio_focus">Release Audio Focus</string>
 </resources>

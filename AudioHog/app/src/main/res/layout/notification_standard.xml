@@ -10,36 +10,30 @@
 		android:id="@+id/notif_icon"
 		android:layout_width="64dp"
 		android:layout_height="64dp"
+		android:contentDescription="@string/app_name"
 		android:layout_centerVertical="true"
 		android:layout_alignParentLeft="true"
+		android:layout_alignParentStart="true"
 		android:layout_marginRight="10dp"
+		android:layout_marginEnd="10dp"
 		android:src="@mipmap/ic_launcher" />
 
-
-	<ImageButton
+	<Button
 		android:id="@+id/notif_btn_take_rel_focus"
-		android:layout_width="64dp"
+		android:layout_width="wrap_content"
 		android:layout_height="64dp"
-
 		android:layout_toLeftOf="@+id/notif_btn_playpause"
+		android:layout_toStartOf="@+id/notif_btn_playpause"
+		android:layout_toRightOf="@+id/notif_icon"
+		android:layout_toEndOf="@+id/notif_icon"
+		android:layout_centerVertical="true" />
 
-		android:layout_centerVertical="true"
-
-
-
-		/>
-
-	
 	<ImageButton
 		android:id="@+id/notif_btn_playpause"
 		android:layout_width="64dp"
 		android:layout_height="64dp"
 		android:layout_alignParentRight="true"
-		android:layout_centerVertical="true"
-
-		
-		
-		 />
-
+		android:layout_alignParentEnd="true"
+		android:layout_centerVertical="true" />
 
 </RelativeLayout>

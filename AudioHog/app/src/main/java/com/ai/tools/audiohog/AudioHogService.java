@@ -25,6 +25,8 @@ import android.widget.RemoteViews;
 
 import java.io.IOException;
 
+import timber.log.Timber;
+
 public class AudioHogService extends Service {
 
     public static final String TAG = "AudioHogService";
@@ -416,59 +418,41 @@ public class AudioHogService extends Service {
 
         // Set a pending intent for the playpause button
         Intent playPauseIntent = new Intent(ACTION_PAUSE_AUDIO);
-        //TODOx: uncomment when remoteserviceex is resolved
-        //UPDATE: switching from button to imagebutton seems to have done the trick... not clear why
         if(mStatelyMediaPlayer.isInStarted()){
-            Log.v(TAG, "playpause rec -- in buildNotification; mStatelyMediaPlayer.isInStarted() is true, so setting playpause to pause gfx");
+            Timber.v("playpause rec -- in buildNotification; mStatelyMediaPlayer.isInStarted() is true, so setting playpause to pause gfx");
             playPauseIntent.setAction(ACTION_PAUSE_AUDIO);
             contentView.setImageViewResource(R.id.notif_btn_playpause, R.drawable.ic_media_pause);
+            contentView.setContentDescription(R.id.notif_btn_playpause, getString(R.string.pause_audio));
         }
         else{
-            Log.v(TAG, "playpause rec -- in buildNotification; mStatelyMediaPlayer.isInStarted() is false, so setting playpause to play gfx");
-
+            Timber.v("playpause rec -- in buildNotification; mStatelyMediaPlayer.isInStarted() is false, so setting playpause to play gfx");
             playPauseIntent.setAction(ACTION_PLAY_AUDIO);
             contentView.setImageViewResource(R.id.notif_btn_playpause, R.drawable.ic_media_play);
+            contentView.setContentDescription(R.id.notif_btn_playpause, getString(R.string.play_audio));
         }
 
         // Set a pending intent for the take/release audio focus button
         Intent takeReleaseFocusIntent = new Intent(ACTION_RELEASE_AUDIO_FOCUS);
         if(mv_bAudioFocusHeld){
-            Log.v(TAG, "take release focus -- in buildNotification; focus is held, so setting take/release to release gfx");
+            Timber.v("take release focus -- in buildNotification; focus is held, so setting take/release to release txt");
             takeReleaseFocusIntent.setAction(ACTION_RELEASE_AUDIO_FOCUS);
-            contentView.setImageViewResource(R.id.notif_btn_take_rel_focus, R.drawable.open);
+            contentView.setTextViewText(R.id.notif_btn_take_rel_focus, getString(R.string.release_audio_focus));
         }
         else{
-            Log.v(TAG, "take release focus -- in buildNotification; focus is not held, so setting take/release to take gfx");
+            Timber.v("take release focus -- in buildNotification; focus is not held, so setting take/release to take txt");
             takeReleaseFocusIntent.setAction(ACTION_TAKE_AUDIO_FOCUS);
-            contentView.setImageViewResource(R.id.notif_btn_take_rel_focus, R.drawable.closed);
+            contentView.setTextViewText(R.id.notif_btn_take_rel_focus, getString(R.string.take_audio_focus));
         }
 
         // attach the expanded content view to the notification
         notification.contentView = contentView;
 
-        PendingIntent playPausePendingIntent = PendingIntent.getBroadcast(this, 0, playPauseIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        PendingIntent takeReleasePendingIntent = PendingIntent.getBroadcast(this, 0, takeReleaseFocusIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        // play/pause music and take/release audio focus notif buttons
+        PendingIntent playPausePendingIntent = PendingIntent.getBroadcast(this, 0, playPauseIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent takeReleasePendingIntent = PendingIntent.getBroadcast(this, 0, takeReleaseFocusIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         contentView.setOnClickPendingIntent(R.id.notif_btn_playpause, playPausePendingIntent);
         contentView.setOnClickPendingIntent(R.id.notif_btn_take_rel_focus, takeReleasePendingIntent);
 
-        // configure an explicit intent to launch the main activity
-        // in a new task since it will be started outside the context
-        // of an existing activity
-        Intent mainActivityIntent = new Intent();
-        mainActivityIntent.setClass(this.getApplicationContext(),MainAudioHogActivity.class);
-        mainActivityIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        PendingIntent launchMainActivityIntent = PendingIntent.getActivity(
-                this,
-                0,
-                mainActivityIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT);
-        notification.contentIntent = launchMainActivityIntent;
-		/*
-		// The PendingIntent to launch our activity if the user selects this notification itself
-		PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
-				new Intent(this, MainAudioHogActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), 0);
-		*/
-        //notification.contentIntent = playPauseIntent;//contentIntent;
         notification.flags = Notification.FLAG_ONGOING_EVENT;
     }
     private void createNotificationChannel() {

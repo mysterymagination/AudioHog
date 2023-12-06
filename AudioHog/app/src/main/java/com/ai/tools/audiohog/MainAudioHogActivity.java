@@ -23,6 +23,8 @@ import android.widget.AdapterView.OnItemSelectedListener;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import static timber.log.Timber.DebugTree;
+import timber.log.Timber;
 
 public class MainAudioHogActivity extends AppCompatActivity {
 
@@ -64,6 +66,9 @@ public class MainAudioHogActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (BuildConfig.DEBUG && Timber.treeCount() == 0) {
+            Timber.plant(new DebugTree());
+        }
         setContentView(R.layout.activity_main_audio_hog);
         initUI();
 
