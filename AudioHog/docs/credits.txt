@@ -1,0 +1,4 @@
+1. src/main/res/drawable/ic_pig.xml
+1.1 Source: https://commons.wikimedia.org/wiki/Category:SVG_pigs#/media/File:Pig_icon_05.svg 
+1.2 Author: https://commons.wikimedia.org/wiki/User:LadyofHats
+1.3 License: CC0

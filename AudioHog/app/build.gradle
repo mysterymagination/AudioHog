@@ -3,7 +3,7 @@ apply plugin: 'com.android.application'
 android {
     defaultConfig {
         applicationId "com.ai.tools.audiohog"
-        minSdkVersion 15
+        minSdkVersion 24
         targetSdkVersion 33
         versionCode 10201
         versionName "1.2.1"

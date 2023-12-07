@@ -1,5 +1,6 @@
 package com.ai.tools.audiohog;
 
+import android.Manifest;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -9,6 +10,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.media.AudioManager;
@@ -16,6 +18,7 @@ import android.os.*;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
 
 
 import android.widget.RemoteViews;
@@ -55,6 +58,7 @@ public class AudioHogService extends Service {
     private NotificationManagerCompat mNM;
     private NotificationCompat.Builder mNotifyBuilder;
     private boolean mIsDestroyed = false;
+    private boolean mIsNotificationShowing = false;
 
     private IAudioHog.Stub mv_rStub = new IAudioHog.Stub() {
         //synchronized only because I used aidl directly instead of a bound service w/ messenger for RPC/IPC
@@ -71,6 +75,8 @@ public class AudioHogService extends Service {
         @Override
         public void stopAudioHogService() throws RemoteException {
             stopSelf();
+            stopForeground(STOP_FOREGROUND_REMOVE);
+            mIsNotificationShowing = false;
         }
 
         @Override
@@ -80,7 +86,8 @@ public class AudioHogService extends Service {
             // and the mediaplayer's current state is checked to determine what
             // the icon should change to in order to indicate what commanding
             // a change will move the state value to)
-            startForeground(NOTIFICATION_ID,buildNotification(NOTIFICATION_PLAYING));
+            startForeground(NOTIFICATION_ID, buildNotification(NOTIFICATION_PLAYING));
+            mIsNotificationShowing = true;
         }
 
         @Override
@@ -167,6 +174,7 @@ public class AudioHogService extends Service {
         // will call updateNotif
         Timber.d("audio hog service -- in onDestroy; about to cancel the notif");
         mNM.cancel(NOTIFICATION_ID);
+        mIsNotificationShowing = false;
     }
 
     @Override
@@ -371,7 +379,7 @@ public class AudioHogService extends Service {
         // Sets an ID for the notification, so it can be updated
         // Only create one builder, which seems to be important for
         // avoiding repeat alerts
-        mNotifyBuilder.setSmallIcon(R.mipmap.ic_launcher)
+        mNotifyBuilder.setSmallIcon(R.drawable.ic_pig)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setContentText(text);
@@ -389,8 +397,15 @@ public class AudioHogService extends Service {
      * @param notice this param can modify the specific behavior of the no
      */
     private void updateNotification(int notice) {
-        Notification notification = buildNotification(notice);
-        mNM.notify(NOTIFICATION_ID, notification);
+        if (mIsNotificationShowing) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    return;
+                }
+            }
+            Notification notification = buildNotification(notice);
+            mNM.notify(NOTIFICATION_ID, notification);
+        }
     }
 
     /**
