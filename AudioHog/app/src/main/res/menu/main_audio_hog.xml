@@ -13,7 +13,7 @@
         android:id="@+id/action_start_service"
 
         app:showAsAction="never"
-        android:title="@string/start_service"/>
+        android:title="@string/start_service_in_foreground"/>
     <item
         android:id="@+id/action_stop_service"
 

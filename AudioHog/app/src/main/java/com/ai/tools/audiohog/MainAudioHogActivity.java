@@ -1,16 +1,16 @@
 package com.ai.tools.audiohog;
 
+import android.Manifest;
 import android.content.ComponentName;
 import android.content.ServiceConnection;
-
-
+import android.content.pm.PackageManager;
 import android.media.AudioManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
 import android.os.RemoteException;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -20,21 +20,15 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.AdapterView.OnItemSelectedListener;
-
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
+import static timber.log.Timber.DebugTree;
+import timber.log.Timber;
 
 public class MainAudioHogActivity extends AppCompatActivity {
-
-    private static final String TAG = "AudioHog";
-
-
-
-
-    //private AssetFileDescriptor afd = null;
-    private AudioManager.OnAudioFocusChangeListener mv_rAudioFocusListener;
-    private Analytics mv_rAnalytics;
-
 
     //UI elements
     private Button mPauseAudio_B;
@@ -66,39 +60,40 @@ public class MainAudioHogActivity extends AppCompatActivity {
     */
 
     private Spinner mAudioFocusDuration_SP;
-    private boolean mv_bActivityDestroying = false;
-
-    //audiohog service handle
-
-
 
     private FocusAdapter mFocusAdapter;
+    private final ActivityResultLauncher<String> requestPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    launchForegroundService();
+                } else {
+                    Timber.w("user denied post_notification permission, so cannot start service in foreground");
+                }
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (BuildConfig.DEBUG && Timber.treeCount() == 0) {
+            Timber.plant(new DebugTree());
+        }
         setContentView(R.layout.activity_main_audio_hog);
         initUI();
 
-        //bind to service
+        // bind to service
         Intent serviceIntent = new Intent(this,AudioHogService.class);
-        startService(serviceIntent);//start it so that it can persist if the activity unbinds
+        startService(serviceIntent);// start it so that it can persist if the activity unbinds
         bindService(serviceIntent,mv_rServiceConnection,Context.BIND_AUTO_CREATE);
-
-        //since the menu tries to init part of the service, we need to only set it up after the
-        //service is bound
-        //initUI();
 
         Toolbar myToolbar = (Toolbar) findViewById(R.id.my_toolbar);
         setSupportActionBar(myToolbar);
 
-    }//end onCreate()
+    }
 
     @Override
     protected void onDestroy(){
-        Log.d(TAG, "take release -- onDestroy()");
+        Timber.d("take release -- onDestroy()");
         super.onDestroy();
-        mv_bActivityDestroying = true;
         // unbind the service (it will persist if it has not been stopped via serviceinterface::stopAudioHogService())
         unbindService(mv_rServiceConnection);
 
@@ -116,52 +111,62 @@ public class MainAudioHogActivity extends AppCompatActivity {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-
-        switch(id){
-            case R.id.action_dismiss_activity:
-                finish();
+        if (id == R.id.action_dismiss_activity) {
+            finish();
+            return true;
+        } else if (id == R.id.action_stop_service) {
+            try {
+                mv_rServiceInterface.stopAudioHogService();
                 return true;
-            case R.id.action_stop_service:
-                try {
-                    mv_rServiceInterface.stopAudioHogService();
-                }catch(RemoteException e){
-                    Log.e(TAG,"audio hog -- attempting to stopAudioHogService the service threw remote ex",e);
-                }
-                return true;
-            case R.id.action_start_service:
-                try {
-                    mv_rServiceInterface.startAudioHogService();
-                }catch(RemoteException e){
-                    Log.e(TAG,"audio hog -- attempting to startAudioHogService the service threw remote ex",e);
-                }
-                return true;
-            case R.id.action_exit:
-                // 1. stop the service
-                try {
-                    mv_rServiceInterface.stopAudioHogService();
-                }catch(RemoteException e){
-                    Log.e(TAG,"audio hog -- attempting to stopAudioHogService the service threw remote ex",e);
-                }
-                // 2. close activity, which also unbinds from service
-                finish();
-                return true;
+            } catch (RemoteException e) {
+                Timber.e(e, "audio hog -- attempting to stopAudioHogService the service threw remote ex");
+                return false;
+            }
+        } else if (id == R.id.action_start_service) {
+            return launchForegroundService();
+        } else if (id == R.id.action_exit) {
+            // 1. stop the service
+            try {
+                mv_rServiceInterface.stopAudioHogService();
+            }catch(RemoteException e){
+                Timber.e(e, "audio hog -- attempting to stopAudioHogService the service threw remote ex");
+            }
+            // 2. close activity, which also unbinds from service
+            finish();
+            return true;
         }
 
-
         return super.onOptionsItemSelected(item);
+    }
+
+    private boolean launchForegroundService() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+                return false;
+            }
+        }
+
+        try {
+            mv_rServiceInterface.startAudioHogServiceForeground();
+            return true;
+        } catch (RemoteException e) {
+            Timber.e(e, "audio hog -- attempting to startAudioHogService the service threw remote ex");
+            return false;
+        }
     }
 
     private IAudioHog mv_rServiceInterface;
     private ServiceConnection mv_rServiceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-            Log.i(TAG,"audio hog service connected");
+            Timber.i("audio hog service connected");
             mv_rServiceInterface = IAudioHog.Stub.asInterface(iBinder);
         }
 
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
-            Log.i(TAG,"audio hog service disconnected");
+            Timber.i("audio hog service disconnected");
             mv_rServiceInterface = null;
         }
     };
@@ -173,7 +178,7 @@ public class MainAudioHogActivity extends AppCompatActivity {
 
 
         mAudioStream_SP = (Spinner)findViewById(R.id.widget_activity_main_stream_SP);
-        mStreamAdapter = new StreamAdapter(this,R.layout.simple_spinner,this.getResources().getStringArray(R.array.audio_stream_type_array));
+        mStreamAdapter = new StreamAdapter(this, R.layout.simple_spinner, this.getResources().getStringArray(R.array.audio_stream_type_array));
         mStreamAdapter.setDropDownViewResource(R.layout.simple_spinner_dropdown_item);
         mAudioStream_SP.setAdapter(mStreamAdapter);
         mAudioStream_SP.setSelection(0, false);//keeps the implicit onItemSelected call from occurring when the onitemselectedlistener is added prior to layout.  See http://stackoverflow.com/questions/2562248/how-to-keep-onitemselected-from-firing-off-on-a-newly-instantiated-spinner#answer-17336944
@@ -221,7 +226,7 @@ public class MainAudioHogActivity extends AppCompatActivity {
                     }
 
                 } catch (RemoteException e) {
-                    Log.e(TAG, "audio hog -- remote exception thrown while setting audio stream to " + AudioHogService.resolveAudioStream(iChosenAudioStream));
+                    Timber.e("audio hog -- remote exception thrown while setting audio stream to " + AudioHogService.resolveAudioStream(iChosenAudioStream));
                 }
 
 
@@ -281,7 +286,7 @@ public class MainAudioHogActivity extends AppCompatActivity {
                         mv_rServiceInterface.setAudioFocusDuration(iAudioFocusDuration);
                     }
                 }catch(RemoteException e){
-                    Log.e(TAG,"audio hog -- remote exception thrown while setting audio focus duration to "+AudioHogService.resolveAudioFocusState(iAudioFocusDuration));
+                    Timber.e("audio hog -- remote exception thrown while setting audio focus duration to "+AudioHogService.resolveAudioFocusState(iAudioFocusDuration));
 
                 }
 
@@ -306,7 +311,7 @@ public class MainAudioHogActivity extends AppCompatActivity {
                 try {
                     mv_rServiceInterface.pauseAudio();
                 }catch(RemoteException e){
-                    Log.e(TAG,"audio hog -- remote exception thrown while pausing audio",e);
+                    Timber.e(e, "audio hog -- remote exception thrown while pausing audio");
                 }
 
 
@@ -322,7 +327,7 @@ public class MainAudioHogActivity extends AppCompatActivity {
                 try{
                     mv_rServiceInterface.playAudio();
                 }catch(RemoteException e){
-                    Log.e(TAG,"audio hog -- remote exception thrown while playing audio",e);
+                    Timber.e(e, "audio hog -- remote exception thrown while playing audio");
                 }
 
 
@@ -338,10 +343,10 @@ public class MainAudioHogActivity extends AppCompatActivity {
                     boolean bRes = mv_rServiceInterface.takeAudioFocus();
                     if (!bRes) {
 
-                        Log.e(TAG, "the hog's request to take audio focus failed!");
+                        Timber.e("the hog's request to take audio focus failed!");
                     }
                 }catch(RemoteException e){
-                    Log.e(TAG,"audio hog -- in requestaudiofocus onclick; remote ex thrown while trying to take audio focus",e);
+                    Timber.e(e, "audio hog -- in requestaudiofocus onclick; remote ex thrown while trying to take audio focus");
                 }
 
             }
@@ -356,10 +361,10 @@ public class MainAudioHogActivity extends AppCompatActivity {
                     boolean bRes = mv_rServiceInterface.releaseAudioFocus();
                     if (!bRes) {
 
-                        Log.e(TAG, "the hog's request to release audio focus failed!");
+                        Timber.e("the hog's request to release audio focus failed!");
                     }
                 }catch(RemoteException e){
-                    Log.e(TAG,"audio hog -- in abandonaudiofocus onclick; remote ex thrown while trying to release audio focus",e);
+                    Timber.e(e, "audio hog -- in abandonaudiofocus onclick; remote ex thrown while trying to release audio focus");
                 }
 
             }
@@ -368,26 +373,15 @@ public class MainAudioHogActivity extends AppCompatActivity {
 
     }
 
-
-
-
-
-
-    private class StreamAdapter extends ArrayAdapter{
+    private static class StreamAdapter extends ArrayAdapter<String> {
 
         public StreamAdapter(Context context, int resource, String[] strings) {
             super(context, resource, strings);
-
         }
-
     }
-    private class FocusAdapter extends ArrayAdapter{
-
+    private static class FocusAdapter extends ArrayAdapter<String> {
         public FocusAdapter(Context context, int resource, String[] strings) {
             super(context, resource, strings);
-
         }
-
     }
-
 }
