@@ -20,7 +20,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
-import android.util.Log;
+
 import android.widget.RemoteViews;
 
 import java.io.IOException;
@@ -57,6 +57,7 @@ public class AudioHogService extends Service {
     private volatile int mv_iAudioFocusDuration = AudioManager.AUDIOFOCUS_GAIN;
     private NotificationManagerCompat mNM;
     private NotificationCompat.Builder mNotifyBuilder;
+    private boolean mIsDestroyed = false;
 
     private IAudioHog.Stub mv_rStub = new IAudioHog.Stub() {
         //synchronized only because I used aidl directly instead of a bound service w/ messenger for RPC/IPC
@@ -102,7 +103,7 @@ public class AudioHogService extends Service {
                 mv_bAudioFocusHeld = true;
             }
             else{
-                Log.e(TAG, "the hog's request to take audio focus over stream " + resolveAudioStream(mv_iAudioStreamID) + " for duration " + resolveAudioFocusState(mv_iAudioFocusDuration) + " failed!");
+                Timber.e("the hog's request to take audio focus over stream " + resolveAudioStream(mv_iAudioStreamID) + " for duration " + resolveAudioFocusState(mv_iAudioFocusDuration) + " failed!");
             }
             return bRes;
         }
@@ -114,7 +115,7 @@ public class AudioHogService extends Service {
                 mv_bAudioFocusHeld = false;
             }
             else{
-                Log.e(TAG,"the hog's request to abandon audio focus over audio focus change listener "+mv_rAudioFocusChangeListener+" failed!");
+                Timber.e("the hog's request to abandon audio focus over audio focus change listener "+mv_rAudioFocusChangeListener+" failed!");
             }
             return bRes;
         }
@@ -139,14 +140,14 @@ public class AudioHogService extends Service {
         mNM = NotificationManagerCompat.from(this);
         mNotifyBuilder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID);
         startForeground(NOTIFICATION_ID, buildNotification(NOTIFICATION_PLAYING));
-        Log.d(TAG, "audio hog service -- in onCreate");
+        Timber.d("audio hog service -- in onCreate");
 
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-
+        mIsDestroyed = true;
         if (mStatelyMediaPlayer.isInStarted() || mStatelyMediaPlayer.isInPaused()) {
             if (mStatelyMediaPlayer.isInStarted()) {
                 mStatelyMediaPlayer.pause();
@@ -159,9 +160,9 @@ public class AudioHogService extends Service {
         unregisterReceiver(mTakeReleaseFocusReceiver);
         abandonAudioFocus(mv_rAudioFocusChangeListener);
 
-        //cancel the notif last because abandonAudioFocus above
-        //will call updateNotif
-        Log.d(TAG, "audio hog service -- in onDestroy; about to cancel the notif");
+        // cancel the notif last because abandonAudioFocus above
+        // will call updateNotif
+        Timber.d("audio hog service -- in onDestroy; about to cancel the notif");
         mNM.cancel(NOTIFICATION_ID);
     }
 
@@ -201,37 +202,37 @@ public class AudioHogService extends Service {
         try {
             AssetFileDescriptor afd = mAssetManager.openFd("winter.mp3");
             try {
-                Log.i(TAG, "audio hog -- initStatelyMediaPlayer; asset file descriptor returned for winter.mp3 is " + afd);
+                Timber.i( "audio hog -- initStatelyMediaPlayer; asset file descriptor returned for winter.mp3 is %s", afd);
                 mStatelyMediaPlayer.setDataSource(afd.getFileDescriptor());
 
 
-                Log.i(TAG, "initStatelyMediaPlayer() called with mv_iAudioStreamID of " + mv_iAudioStreamID);
+                Timber.i( "initStatelyMediaPlayer() called with mv_iAudioStreamID of %s", mv_iAudioStreamID);
 
                 //int audioReqState = mAudioManager.requestAudioFocus(this, mv_iAudioStreamID, AudioManager.AUDIOFOCUS_GAIN);
                 //if(audioReqState == AudioManager.AUDIOFOCUS_REQUEST_GRANTED){
-                //Log.i(TAG, "audio focus was granted to the hog");
+                //Timber.i( "audio focus was granted to the hog");
                 mStatelyMediaPlayer.setAudioStream(mv_iAudioStreamID);
                 try {
                     mStatelyMediaPlayer.prepare();
                 } catch (IllegalStateException e) {
-                    Log.e(TAG, "audio hog -- illegalstate ex thrown while preparing the stately mediaplayer", e);
+                    Timber.e(e, "audio hog -- illegalstate ex thrown while preparing the stately mediaplayer");
 
                 } catch (IOException e) {
-                    Log.e(TAG, "audio hog -- io ex thrown while preparing the stately mediaplayer", e);
+                    Timber.e(e, "audio hog -- io ex thrown while preparing the stately mediaplayer");
                 }
                 mStatelyMediaPlayer.setLooping(true);
-                Log.d(TAG, "audio successfully acquired, initialized, and prepared");
+                Timber.d("audio successfully acquired, initialized, and prepared");
 
             } catch (IOException e) {
-                Log.e(TAG, "audio hog -- io exception thrown while trying to set mediaplayer data source", e);
-            } catch (IllegalArgumentException e1) {
-                Log.e(TAG, "audio hog -- illegalargument ex thrown while trying to set mediaplayer data source", e1);
-            } catch (IllegalStateException e1) {
-                Log.e(TAG, "audio hog -- illegalstate ex thrown while trying to set mediaplayer data source", e1);
+                Timber.e(e, "audio hog -- io exception thrown while trying to set mediaplayer data source");
+            } catch (IllegalArgumentException e) {
+                Timber.e(e, "audio hog -- illegalargument ex thrown while trying to set mediaplayer data source");
+            } catch (IllegalStateException e) {
+                Timber.e(e, "audio hog -- illegalstate ex thrown while trying to set mediaplayer data source");
 
             }
         } catch (IOException e) {
-            Log.e(TAG, "audio hog -- io ex thrown while initializing the stately mediaplayer. failed to open fd to audio asset", e);
+            Timber.e(e, "audio hog -- io ex thrown while initializing the stately mediaplayer. failed to open fd to audio asset");
         }
 
     }
@@ -248,26 +249,26 @@ public class AudioHogService extends Service {
                 AssetFileDescriptor afd = mAssetManager.openFd("winter.mp3");
                 initStatelyMediaPlayer();
                 mStatelyMediaPlayer.start();
-                Log.d(TAG, "audio should be playing now");
+                Timber.d("audio should be playing now");
 
                 updateNotification(NOTIFICATION_PLAYING);
                 bSuccess = true;
-            } catch (IOException e1) {
+            } catch (IOException e) {
 
-                Log.e(TAG, "audio hog -- in playInterferingAudio; io ex thrown", e1);
+                Timber.e(e, "audio hog -- in playInterferingAudio; io ex thrown");
             } catch (IllegalStateException e) {
-                Log.e(TAG, "audio hog -- in playInterferingAudio; illstate ex thrown by start()", e);
+                Timber.e(e, "audio hog -- in playInterferingAudio; illstate ex thrown by start()");
             }
         } else {//mediaplayer is already init
             try {
                 mStatelyMediaPlayer.start();
-                Log.d(TAG, "audio should be playing now");
+                Timber.d("audio should be playing now");
 
                 updateNotification(NOTIFICATION_PLAYING);
                 bSuccess = true;
 
             } catch (IllegalStateException e) {
-                Log.e(TAG, "audio hog -- in playInterferingAudio; illstate ex thrown by start()", e);
+                Timber.e(e, "audio hog -- in playInterferingAudio; illstate ex thrown by start()");
             }
         }
 
@@ -288,7 +289,7 @@ public class AudioHogService extends Service {
             updateNotification(NOTIFICATION_PAUSING);
             bSuccess = true;
         } catch (IllegalStateException e) {
-            Log.e(TAG, "audio hog -- in pauseInterferingAudio; illstateex thrown while trying to call statelymediaplayer::pause", e);
+            Timber.e(e, "audio hog -- in pauseInterferingAudio; illstateex thrown while trying to call statelymediaplayer::pause");
         }
 
         return bSuccess;
@@ -301,16 +302,16 @@ public class AudioHogService extends Service {
 
         @Override
         public void onReceive(Context context, Intent intent) {
-            Log.v(TAG, "playpause rec -- received a play/pause command from notif");
+            Timber.v("playpause rec -- received a play/pause command from notif");
             if (intent.getAction().equals(ACTION_PLAY_AUDIO)) {
-                Log.v(TAG, "playpause rec -- received a play command from notif");
+                Timber.v("playpause rec -- received a play command from notif");
                 playInterferingAudio();
 
                 /*//this is taken care of in playInterferingAudio
                 updateNotification(NOTIFICATION_PAUSING);
                 */
             } else if (intent.getAction().equals(ACTION_PAUSE_AUDIO)) {
-                Log.v(TAG, "playpause rec -- received a pause command from notif");
+                Timber.v("playpause rec -- received a pause command from notif");
                 pauseInterferingAudio();
                 /*//this is taken care of in pauseInterferingAudio
                 updateNotification(NOTIFICATION_PLAYING);
@@ -324,23 +325,23 @@ public class AudioHogService extends Service {
 
         @Override
         public void onReceive(Context context, Intent intent) {
-            Log.v(TAG, "take release rec -- received a take/release command from notif");
+            Timber.v("take release rec -- received a take/release command from notif");
             if (intent.getAction().equals(ACTION_RELEASE_AUDIO_FOCUS)) {
-                Log.v(TAG, "take release rec -- received a release command from notif");
+                Timber.v("take release rec -- received a release command from notif");
                 if (abandonAudioFocus(mv_rAudioFocusChangeListener)) {
                     mv_bAudioFocusHeld = false;
                 } else {
-                    Log.e(TAG, "the hog's request to abandon audio focus over audio focus change listener " + mv_rAudioFocusChangeListener + " failed!");
+                    Timber.e("the hog's request to abandon audio focus over audio focus change listener " + mv_rAudioFocusChangeListener + " failed!");
                 }
                 /*//this is taken care of in abandonAudioFocus above
                 updateNotification(NOTIFICATION_RELEASED);
                 */
             } else if (intent.getAction().equals(ACTION_TAKE_AUDIO_FOCUS)) {
-                Log.v(TAG, "take release rec -- received a take command from notif");
+                Timber.v("take release rec -- received a take command from notif");
                 if (requestAudioFocus(mv_rAudioFocusChangeListener, mv_iAudioStreamID, mv_iAudioFocusDuration)) {
                     mv_bAudioFocusHeld = true;
                 } else {
-                    Log.e(TAG, "the hog's request to take audio focus over stream " + resolveAudioStream(mv_iAudioStreamID) + " for duration " + resolveAudioFocusState(mv_iAudioFocusDuration) + " failed!");
+                    Timber.e("the hog's request to take audio focus over stream " + resolveAudioStream(mv_iAudioStreamID) + " for duration " + resolveAudioFocusState(mv_iAudioFocusDuration) + " failed!");
                 }
                 /*//this is taken care of in requestAudioFocus above
                 updateNotification(NOTIFICATION_TAKEN);
@@ -372,7 +373,7 @@ public class AudioHogService extends Service {
                 .setOnlyAlertOnce(true);
 
         // todo: using the same builder instance did not prevent repeat alerts
-        Log.d(TAG, "buildNotification; builder is " + mNotifyBuilder);
+        Timber.d("buildNotification; builder is " + mNotifyBuilder);
 
         // Start of a loop that processes data and then notifies the user
         mNotifyBuilder.setContentText(text);
@@ -480,7 +481,7 @@ public class AudioHogService extends Service {
      */
     public boolean requestAudioFocus(AudioManager.OnAudioFocusChangeListener listener,int stream,int durationType){
         int iRet = mAudioManager.requestAudioFocus(listener, stream, durationType);
-        Log.i(TAG,"audio focus request results in "+Util.resolveAudioFocusRequestResult(iRet));
+        Timber.i("audio focus request results in "+Util.resolveAudioFocusRequestResult(iRet));
         if(iRet == AudioManager.AUDIOFOCUS_REQUEST_GRANTED){
             mv_bAudioFocusHeld = true;
             updateNotification(NOTIFICATION_TAKEN);
@@ -493,10 +494,12 @@ public class AudioHogService extends Service {
      */
     public boolean abandonAudioFocus(AudioManager.OnAudioFocusChangeListener listener){
         int iRet = mAudioManager.abandonAudioFocus(listener);
-        Log.d(TAG,"audio focus abandon results in "+Util.resolveAudioFocusRequestResult(iRet));
+        Timber.d("audio focus abandon results in %s", Util.resolveAudioFocusRequestResult(iRet));
         if(iRet == AudioManager.AUDIOFOCUS_REQUEST_GRANTED){
             mv_bAudioFocusHeld = false;
-            updateNotification(NOTIFICATION_RELEASED);
+            if (!mIsDestroyed) {
+                updateNotification(NOTIFICATION_RELEASED);
+            }
         }
         return iRet == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
     }
@@ -507,12 +510,12 @@ public class AudioHogService extends Service {
         @Override
         public void onAudioFocusChange(int focusChange) {
 
-            Log.i(TAG, "The audio hog service has just received an onAudioFocusChange callback, with focus state " + resolveAudioFocusState(focusChange));
+            Timber.i( "The audio hog service has just received an onAudioFocusChange callback, with focus state %s", resolveAudioFocusState(focusChange));
 
             switch(focusChange){
                 case AudioManager.AUDIOFOCUS_GAIN:{
 
-                    Log.i(TAG, "audio focus gained");
+                    Timber.i( "audio focus gained");
                     mv_bAudioFocusHeld = true;
                     updateNotification(NOTIFICATION_TAKEN);
 
@@ -520,7 +523,7 @@ public class AudioHogService extends Service {
                 }
                 case AudioManager.AUDIOFOCUS_GAIN_TRANSIENT:{
 
-                    Log.i(TAG, "audio focus gained transiently");
+                    Timber.i( "audio focus gained transiently");
                     mv_bAudioFocusHeld = true;
                     updateNotification(NOTIFICATION_TAKEN);
 
@@ -528,7 +531,7 @@ public class AudioHogService extends Service {
                 }
                 case AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE:{
 
-                    Log.i(TAG, "audio focus gained transiently but also exclusively");
+                    Timber.i( "audio focus gained transiently but also exclusively");
                     mv_bAudioFocusHeld = true;
                     updateNotification(NOTIFICATION_TAKEN);
 
@@ -537,7 +540,7 @@ public class AudioHogService extends Service {
                 }
                 case AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK:{
 
-                    Log.i(TAG, "audio focus gained transiently, you may have a duck");
+                    Timber.i( "audio focus gained transiently, you may have a duck");
                     mv_bAudioFocusHeld = true;
                     updateNotification(NOTIFICATION_TAKEN);
 
@@ -545,7 +548,7 @@ public class AudioHogService extends Service {
                     break;
                 }
                 case AudioManager.AUDIOFOCUS_LOSS:{
-                    Log.i(TAG, "audio focus lost");
+                    Timber.i( "audio focus lost");
                     if(mStatelyMediaPlayer.isInStarted() || mStatelyMediaPlayer.isInPaused()){
                         try {
                             if (mStatelyMediaPlayer.isInStarted()) {
@@ -554,7 +557,7 @@ public class AudioHogService extends Service {
                             mStatelyMediaPlayer.stop();
 
                         }catch(IllegalStateException e){
-                            Log.e(TAG,"audio hog -- illegal state ex thrown while pausing/stopping the mediaplayer in response to audio focus loss",e);
+                            Timber.e(e, "audio hog -- illegal state ex thrown while pausing/stopping the mediaplayer in response to audio focus loss");
                         }
                     }
 
@@ -564,7 +567,7 @@ public class AudioHogService extends Service {
                     break;
                 }
                 case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:{
-                    Log.i(TAG, "audio focus lost transiently");
+                    Timber.i( "audio focus lost transiently");
 
                     mv_bAudioFocusHeld = false;
                     updateNotification(NOTIFICATION_RELEASED);
@@ -572,17 +575,14 @@ public class AudioHogService extends Service {
                     break;
                 }
                 case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:{
-                    Log.i(TAG, "audio focus lost transiently, and you can have a duck");
+                    Timber.i( "audio focus lost transiently, and you can have a duck");
 
                     mv_bAudioFocusHeld = false;
                     updateNotification(NOTIFICATION_RELEASED);
 
                     break;
                 }
-            }//end switch(focusChange)
-
-
-
+            } // end switch(focusChange)
         }
     }
 
@@ -644,6 +644,4 @@ public class AudioHogService extends Service {
                 return "unknown stream "+stream;
         }
     }
-
-
 }

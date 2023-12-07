@@ -1,11 +1,11 @@
 package com.ai.tools.audiohog;
 
-import java.io.FileDescriptor;
 import java.io.IOException;
-
 import android.content.res.AssetFileDescriptor;
 import android.media.AudioManager;
-import android.util.Log;
+
+import timber.log.Timber;
+
 
 /**
  * A subclass of android.media.MediaPlayer which provides methods for
@@ -15,10 +15,6 @@ import android.util.Log;
  * 
  */
 public class StatelyMediaPlayer extends android.media.MediaPlayer {
-	
-	private final static String TAG = "StatelyMediaPlayer";
-
-	
     /**
      * Set of states for StatelyMediaPlayer:
      * These correspond to all possible states in the MediaPlayer FSM, and allow for precision
@@ -61,7 +57,7 @@ public class StatelyMediaPlayer extends android.media.MediaPlayer {
             setState(MPStates.INITIALIZED);
         }
         catch (Exception e) {
-            Log.e(TAG, "setDataSource("+afd.getFileDescriptor().toString()+") Failed");
+            Timber.e("setDataSource("+afd.getFileDescriptor().toString()+") Failed");
             setState(MPStates.ERROR);
         }
     }
@@ -159,13 +155,14 @@ public class StatelyMediaPlayer extends android.media.MediaPlayer {
             boolean tempIsPlaying = this.isPlaying();
 
             if (tempStartState && !tempIsPlaying || !tempStartState && tempIsPlaying) {
-                //Something's odd with the FSM -- when playing we should be in the
-                //STARTED state
-                Log.w(TAG, "Somehow our FSM is in an odd state, as our isInStartState returns " + tempStartState + " and our mediaplayer.isPlaying() returns " + tempIsPlaying);
+                // Something's odd with the FSM in this case -- when playing we should be in the
+                // STARTED state
+                Timber.w("Somehow our FSM is in an odd state, as our isInStartState returns " + tempStartState + " and our mediaplayer.isPlaying() returns " + tempIsPlaying);
             }
-            return tempStartState;//(mState == MPStates.STARTED || this.isPlaying());
+            return tempStartState;
         }catch(IllegalStateException e){
-            Log.w(TAG,"audio hog -- in isInStarted; illegal state ex thrown while trying to check whether or not the statelymediaplayer is playing.  The FSM thinks we are in state "+mState);
+            Timber.w("audio hog -- in isInStarted; illegal state ex thrown while trying to check whether or not the statelymediaplayer is playing.  The FSM thinks we are in state %s", mState);
+            Timber.e(e);
             return false;
         }
     }
@@ -189,9 +186,4 @@ public class StatelyMediaPlayer extends android.media.MediaPlayer {
     public boolean isInPlaybackCompleted() {
         return (mState == MPStates.PLAYBACKCOMPLETED);
     }
-
-
-    
-    //TODOx: add the remaining state checks like template above
-    
 }

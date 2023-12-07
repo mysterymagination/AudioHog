@@ -23,6 +23,7 @@
         <service
             android:name=".AudioHogService"
             android:enabled="true"
+            android:stopWithTask="true"
             android:exported="false" />
     </application>
 
