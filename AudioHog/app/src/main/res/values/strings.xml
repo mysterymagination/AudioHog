@@ -29,7 +29,7 @@
     <string name="pause_audio">Pause Audio</string>
     <string name="req_audio_focus">Request Audio Focus</string>
     <string name="abdn_audio_focus">Abandon Audio Focus</string>
-    <string name="start_service">Start Service</string>
+    <string name="start_service_in_foreground">Start Service in Foreground</string>
     <string name="stop_service">Stop Service</string>
     <string name="dismiss_activity">Dismiss Activity</string>
     <string name="exit">Exit</string>
@@ -37,4 +37,5 @@
     <string name="channel_description">Audio Hog notification keeps the service alive and provides audio focus manipulation from the status bar</string>
     <string name="take_audio_focus">Take Audio Focus</string>
     <string name="release_audio_focus">Release Audio Focus</string>
+    <string name="permission_post_notification_rationale">We need POST_NOTIFICATIONS in order to move the Audio Hog service to the foreground; this will help it persist even when the app is backgrounded and allows you to use it to interrupt audio via the notification controls. This way you can start up your own app and then test interrupting its audio with that of Audio Hog.</string>
 </resources>

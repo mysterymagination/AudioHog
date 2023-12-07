@@ -9,14 +9,11 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.PackageManager;
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.media.AudioManager;
 import android.os.*;
-import android.os.Process;
 
-import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
@@ -77,7 +74,7 @@ public class AudioHogService extends Service {
         }
 
         @Override
-        public void startAudioHogService() throws RemoteException {
+        public void startAudioHogServiceForeground() throws RemoteException {
             // the notice argument to buildNotification is currently unused
             // (the two state machines, audio playing and focus held, are binary
             // and the mediaplayer's current state is checked to determine what
@@ -132,16 +129,22 @@ public class AudioHogService extends Service {
         IntentFilter playPauseFilter = new IntentFilter();
         playPauseFilter.addAction(ACTION_PLAY_AUDIO);
         playPauseFilter.addAction(ACTION_PAUSE_AUDIO);
-        registerReceiver(mPlayPauseReceiver, playPauseFilter);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(mPlayPauseReceiver, playPauseFilter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(mPlayPauseReceiver, playPauseFilter);
+        }
         IntentFilter takeReleaseFocusFilter = new IntentFilter();
         takeReleaseFocusFilter.addAction(ACTION_RELEASE_AUDIO_FOCUS);
         takeReleaseFocusFilter.addAction(ACTION_TAKE_AUDIO_FOCUS);
-        registerReceiver(mTakeReleaseFocusReceiver, takeReleaseFocusFilter);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(mTakeReleaseFocusReceiver, takeReleaseFocusFilter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(mTakeReleaseFocusReceiver, takeReleaseFocusFilter);
+        }
         mNM = NotificationManagerCompat.from(this);
         mNotifyBuilder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID);
-        startForeground(NOTIFICATION_ID, buildNotification(NOTIFICATION_PLAYING));
         Timber.d("audio hog service -- in onCreate");
-
     }
 
     @Override
@@ -298,7 +301,7 @@ public class AudioHogService extends Service {
 
 
     //Notification stuff
-    private BroadcastReceiver mPlayPauseReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver mPlayPauseReceiver = new BroadcastReceiver() {
 
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -321,7 +324,7 @@ public class AudioHogService extends Service {
         }
 
     };
-    private BroadcastReceiver mTakeReleaseFocusReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver mTakeReleaseFocusReceiver = new BroadcastReceiver() {
 
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -353,7 +356,7 @@ public class AudioHogService extends Service {
     };
 
     /**
-     * Builds the service notifcation that lives in the action bar
+     * Builds the service notification that lives in the action bar
      *
      *
      * @param notice -- the code for the particular notification mode we are displaying in
@@ -370,19 +373,14 @@ public class AudioHogService extends Service {
         // avoiding repeat alerts
         mNotifyBuilder.setSmallIcon(R.mipmap.ic_launcher)
                 .setOngoing(true)
-                .setOnlyAlertOnce(true);
+                .setOnlyAlertOnce(true)
+                .setContentText(text);
 
-        // todo: using the same builder instance did not prevent repeat alerts
-        Timber.d("buildNotification; builder is " + mNotifyBuilder);
-
-        // Start of a loop that processes data and then notifies the user
-        mNotifyBuilder.setContentText(text);
         // Because the ID remains unchanged, the existing notification is
         // updated.
-        Notification notification = mNotifyBuilder.build();//.getNotification();//.build();
+        Notification notification = mNotifyBuilder.build();
         configureNotification(notification);
         return notification;
-
     }
 
     /**
@@ -392,19 +390,6 @@ public class AudioHogService extends Service {
      */
     private void updateNotification(int notice) {
         Notification notification = buildNotification(notice);
-
-        // Send the newly created notification --
-        // this will be accompanied by an alert!
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
-        }
         mNM.notify(NOTIFICATION_ID, notification);
     }
 
@@ -457,9 +442,7 @@ public class AudioHogService extends Service {
         notification.flags = Notification.FLAG_ONGOING_EVENT;
     }
     private void createNotificationChannel() {
-        // Create the NotificationChannel, but only on API 26+ because
-        // the NotificationChannel class is new and not in the support library
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             CharSequence name = getString(R.string.channel_name);
             String description = getString(R.string.channel_description);
             int importance = NotificationManager.IMPORTANCE_LOW;
@@ -470,7 +453,7 @@ public class AudioHogService extends Service {
             // or other notification behaviors after this
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             notificationManager.createNotificationChannel(channel);
-        }
+       }
     }
 
     /**
@@ -504,7 +487,6 @@ public class AudioHogService extends Service {
         return iRet == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
     }
 
-    //TODO: update the focus held state and notifications as necessary for all focus state changes
     private class HogAudioFocusChangeListener implements AudioManager.OnAudioFocusChangeListener{
 
         @Override

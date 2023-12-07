@@ -40,7 +40,7 @@ interface IAudioHog {
      * Calls the service's {@link Service#startForeground} method so that it will
      * run even with no more components binding it and will have foreground scheduling
      */
-    void startAudioHogService();
+    void startAudioHogServiceForeground();
 
     /**
     * Starts the interference audio on the selected audio stream.  Does not modify audio focus

@@ -1,16 +1,16 @@
 package com.ai.tools.audiohog;
 
+import android.Manifest;
 import android.content.ComponentName;
 import android.content.ServiceConnection;
-
-
+import android.content.pm.PackageManager;
 import android.media.AudioManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
 import android.os.RemoteException;
-
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -20,9 +20,11 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.AdapterView.OnItemSelectedListener;
-
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
 import static timber.log.Timber.DebugTree;
 import timber.log.Timber;
 
@@ -60,6 +62,14 @@ public class MainAudioHogActivity extends AppCompatActivity {
     private Spinner mAudioFocusDuration_SP;
 
     private FocusAdapter mFocusAdapter;
+    private final ActivityResultLauncher<String> requestPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    launchForegroundService();
+                } else {
+                    Timber.w("user denied post_notification permission, so cannot start service in foreground");
+                }
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -107,17 +117,13 @@ public class MainAudioHogActivity extends AppCompatActivity {
         } else if (id == R.id.action_stop_service) {
             try {
                 mv_rServiceInterface.stopAudioHogService();
+                return true;
             } catch (RemoteException e) {
                 Timber.e(e, "audio hog -- attempting to stopAudioHogService the service threw remote ex");
+                return false;
             }
-            return true;
         } else if (id == R.id.action_start_service) {
-            try {
-                mv_rServiceInterface.startAudioHogService();
-            } catch (RemoteException e) {
-                Timber.e(e, "audio hog -- attempting to startAudioHogService the service threw remote ex");
-            }
-            return true;
+            return launchForegroundService();
         } else if (id == R.id.action_exit) {
             // 1. stop the service
             try {
@@ -131,6 +137,23 @@ public class MainAudioHogActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private boolean launchForegroundService() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+                return false;
+            }
+        }
+
+        try {
+            mv_rServiceInterface.startAudioHogServiceForeground();
+            return true;
+        } catch (RemoteException e) {
+            Timber.e(e, "audio hog -- attempting to startAudioHogService the service threw remote ex");
+            return false;
+        }
     }
 
     private IAudioHog mv_rServiceInterface;
