@@ -1,4 +1,12 @@
 1. src/main/res/drawable/ic_pig.xml
-1.1 Source: https://commons.wikimedia.org/wiki/Category:SVG_pigs#/media/File:Pig_icon_05.svg 
-1.2 Author: https://commons.wikimedia.org/wiki/User:LadyofHats
-1.3 License: CC0
+    1.1 Source: https://commons.wikimedia.org/wiki/Category:SVG_pigs#/media/File:Pig_icon_05.svg 
+    1.2 Author: https://commons.wikimedia.org/wiki/User:LadyofHats
+    1.3 License: CC0
+2. docs/playstore_images/guineapig.jpg
+    2.1 Source: https://openverse.org/image/72dc3ec1-8898-4c48-8046-00167f548067
+    2.2 Author: https://www.flickr.com/photos/129822560@N05
+    2.3 License: CC0
+3. docs/playstore_images/hedgehog.jpg
+    3.1 Source: https://openverse.org/image/6d8f9ebf-ee9a-4152-8824-452b3b3ce927
+    3.2 Author: https://www.flickr.com/photos/143108011@N05
+    3.3 License: CC0
